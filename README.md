@@ -4,7 +4,7 @@ Plugin for SALOME platform to access Elmer functionality
 ##Requirements:
 * Salome 7.8
 * Elmer 8.2 with ElmerGui installed
-* ElMER_HOME registered as system variable
+* ELMER_HOME registered as system variable
 
 ##Installation:
 * create a plugin directory in the root path of SALOME or somewhere convenient.
