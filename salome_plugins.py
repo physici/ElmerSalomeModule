@@ -14,7 +14,7 @@ import sys
 import os
 
 #add SALOME_PLUGIN_PATH to Python environment for easier module import
-plugin_path = os.environ.get("SALOME_PLUGINS_PATH")  + "\\ElmerSalome"
+plugin_path = os.environ.get("SALOME_PLUGIN_PATH")
 sys.path.append(plugin_path)
 
 #import window handler
