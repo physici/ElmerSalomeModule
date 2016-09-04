@@ -21,15 +21,17 @@ def about():
                                     "Requires ELMER, ELMERGUI and ELMER_HOME variable to be set.\n\n" \
                                     "Functionality provided only in Mesh-module.")
     
-def showGeneralSetup():
+def showGeneralSetup():   
+    def applyChanges():
+        QtGui.QMessageBox.about(None, "Test", "Test")
     qwidget = uic.loadUi(path_forms + "\\generalsetup.ui")
-    qwidget.show()
+    qwidget.acceptButton.clicked.connect(applyChanges)
     return qwidget
     
 
-app = QtGui.QApplication(sys.argv)
-window = showGeneralSetup()
-sys.exit(app.exec_())
+#app = QtGui.QApplication(sys.argv)
+#window = showGeneralSetup()
+#sys.exit(app.exec_())
 
 
 
