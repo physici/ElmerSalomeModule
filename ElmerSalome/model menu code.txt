@@ -1,0 +1,1414 @@
+//*****************************************************************************
+//
+//                                Model MENU
+//
+//*****************************************************************************
+
+
+// Model -> Setup...
+//-----------------------------------------------------------------------------
+void MainWindow::modelSetupSlot()
+{
+  generalSetup->show();
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::createBodyCheckBoxes(int which, DynamicEditor *pe)
+{
+  if(!glWidget->hasMesh()) return;
+
+  if ( pe->spareScroll->widget() )
+    delete pe->spareScroll->widget();
+
+  QGridLayout *slayout = new QGridLayout;
+  QLabel *l = new QLabel(tr("Apply to bodies:"));
+
+  int count = 0, even = 0;
+
+  slayout->addWidget(l,count,0);
+  count++;
+
+  for( int i=0; i < glWidget->bodyMap.count(); i++ )
+  {
+     int n=glWidget->bodyMap.key(i);
+     if ( n >= 0 ) {
+        int m = glWidget->bodyMap.value(n);
+
+	if(m >= bodyPropertyEditor.size())
+	  bodyPropertyEditor.resize(m + 1);
+
+	if(!bodyPropertyEditor[m])
+	  bodyPropertyEditor[m] = new BodyPropertyEditor;
+
+	BodyPropertyEditor *body = bodyPropertyEditor[m];
+	
+        populateBodyComboBoxes(body);
+
+        QString title = body->ui.nameEdit->text().trimmed();
+        QCheckBox *a;
+
+        if ( title.isEmpty() )
+          a = new QCheckBox("Body " + QString::number(n));
+        else
+          a = new QCheckBox(title);
+
+        DynamicEditor *p = NULL;
+
+        switch(which) {
+          case BODY_MATERIAL:
+            p=body->material;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(materialBodyChanged(int)));
+          break;
+          case BODY_INITIAL:
+            p=body->initial;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(initialBodyChanged(int)));
+          break;
+          case BODY_FORCE:
+            p=body->force;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(forceBodyChanged(int)));
+          break;
+          case BODY_EQUATION:
+            p=body->equation;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(equationBodyChanged(int)));
+          break;
+        }
+
+        a->setProperty( "body", (qulonglong)body );
+        a->setProperty( "editor", (qulonglong)pe );
+
+        if ( p==pe )
+          a->setChecked(true);
+        else if ( p != NULL )
+          a->setEnabled(false);
+        else
+          a->setChecked(false);
+
+        slayout->addWidget(a,count,even);
+        even = 1 - even;
+        if (!even) count++;
+     }
+  }
+
+  for( int i = 0; i < boundaryPropertyEditor.size(); i++ )
+  {
+    BoundaryPropertyEditor *boundary = boundaryPropertyEditor[i];
+
+    if(!boundary)
+      continue;
+
+     if ( boundary->bodyProperties ) {
+       BodyPropertyEditor *body = boundary->bodyProperties;
+        populateBodyComboBoxes(body);
+
+        QString title = body->ui.nameEdit->text().trimmed();
+        QCheckBox *a;
+
+        if ( title.isEmpty() )
+          a = new QCheckBox("Body{Boundary " + QString::number(i)+ "}");
+        else
+          a = new QCheckBox(title);
+
+        DynamicEditor *p = NULL;
+
+        switch(which) {
+          case BODY_MATERIAL:
+            p=body->material;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(materialBodyChanged(int)));
+          break;
+          case BODY_INITIAL:
+            p=body->initial;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(initialBodyChanged(int)));
+          break;
+          case BODY_FORCE:
+            p=body->force;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(forceBodyChanged(int)));
+          break;
+          case BODY_EQUATION:
+            p=body->equation;
+            connect(a, SIGNAL(stateChanged(int)), this, SLOT(equationBodyChanged(int)));
+          break;
+        }
+
+        a->setProperty( "body", (qulonglong)body );
+        a->setProperty( "editor", (qulonglong)pe );
+
+        if ( p==pe )
+          a->setChecked(true);
+        else if ( p != NULL )
+          a->setEnabled(false);
+
+        slayout->addWidget(a,count,even);
+        even = 1-even;
+        if (!even) count++;
+     }
+  }
+
+  QGroupBox *box = new QGroupBox;
+  box->setLayout(slayout);
+
+  pe->spareScroll->setWidget(box);
+  pe->spareScroll->setMinimumHeight(80);
+  pe->spareScroll->show();
+}
+
+
+//-----------------------------------------------------------------------------
+
+//*****************************************************************************
+
+// Model -> Equation -> Add...
+//-----------------------------------------------------------------------------
+void MainWindow::addEquationSlot()
+{
+  DynamicEditor *pe = new DynamicEditor;
+  equationEditor.append(pe);
+  int current = equationEditor.size() - 1;
+
+  pe->setupTabs(elmerDefs, "Equation", current);
+
+  pe->applyButton->setText("Add");
+  pe->applyButton->setIcon(QIcon(":/icons/list-add.png"));
+  pe->discardButton->setText("Cancel");
+  pe->discardButton->setIcon(QIcon(":/icons/dialog-close.png"));
+  pe->show();
+  
+  connect(pe, SIGNAL(dynamicEditorReady(int,int)),this, SLOT(pdeEditorFinishedSlot(int,int)));
+
+  // Use "spareButton" to invoke solver parameter editor:
+  pe->spareButton->setText("Edit Solver Settings");
+  pe->spareButton->show();
+  pe->spareButton->setIcon(QIcon(":/icons/tools-wizard.png"));
+  connect(pe, SIGNAL(dynamicEditorSpareButtonClicked(int, int)), this, SLOT(editNumericalMethods(int, int)));
+
+  // Equation is new - add to menu:
+  const QString &equationName = pe->nameEdit->text().trimmed();
+  QAction *act = new QAction(equationName, this);
+  equationMenu->addAction(act);
+  pe->menuAction = act;
+
+  connect( pe->nameEdit, SIGNAL(textChanged(QString)), this,
+        SLOT(dynamicEditorNameChange(QString)) );
+
+  createBodyCheckBoxes(BODY_EQUATION,pe);
+}
+
+
+// signal (int, int) emitted by dynamic editor when "spare button" clicked:
+//-----------------------------------------------------------------------------
+void MainWindow::editNumericalMethods(int current, int id)
+{
+  QString title="";
+
+  for(int i = 0; i < equationEditor.size(); i++) {
+    // ** 23/04/09 **
+    if(equationEditor[i]->ID == id) {
+      title = equationEditor[i]->tabWidget->tabText(current);
+      break;
+    }
+  }
+
+  if(title == "General") {
+    logMessage("No solver controls for 'General' equation options");
+    return;
+  }
+
+  if(current >= solverParameterEditor.size())
+    solverParameterEditor.resize(current + 1);
+
+  if(!solverParameterEditor[current])
+    solverParameterEditor[current] = new SolverParameterEditor;
+
+  SolverParameterEditor *spe = solverParameterEditor[current];
+
+  spe->setWindowTitle("Solver control for " + title);
+
+  spe->solverName = title;
+
+  if(spe->generalOptions == NULL) {
+    spe->generalOptions = new DynamicEditor(spe);
+    spe->generalOptions->setupTabs(elmerDefs, "Solver", current );
+    spe->ui.solverControlTabs->insertTab(0, spe->generalOptions->tabWidget->widget(current), "Solver specific options");
+    
+#if 0
+    for( int i=0; i < spe->generalOptions->tabWidget->count(); i++ )
+      {
+	if ( spe->generalOptions->tabWidget->tabText(i) == title )
+	  {
+	    spe->ui.solverControlTabs->insertTab(0, spe->generalOptions->tabWidget->widget(i),
+						 "Solver specific options");
+	    break;
+	  }
+      }
+#endif
+  }
+  
+  spe->show();
+  spe->raise();
+}
+
+
+void MainWindow::dynamicEditorNameChange(QString t)
+{
+  for( int i = 0; i < bodyPropertyEditor.size(); i++ )
+    {
+      if(!bodyPropertyEditor[i])
+	continue;
+      
+      if ( bodyPropertyEditor[i]->touched )
+	populateBodyComboBoxes( bodyPropertyEditor[i] );
+    }
+  
+   for( int i = 0; i < boundaryPropertyEditor.size(); i++ )
+     {
+       if(!boundaryPropertyEditor[i])
+	 continue;
+       
+       if ( boundaryPropertyEditor[i]->touched )
+	 populateBoundaryComboBoxes( boundaryPropertyEditor[i] );
+     }
+}
+
+// signal (int,int) emitted by equation editor when ready:
+//-----------------------------------------------------------------------------
+void MainWindow::pdeEditorFinishedSlot(int signal, int id)
+{  
+  DynamicEditor *pe = equationEditor[id];
+  
+  const QString &equationName = pe->nameEdit->text().trimmed();
+
+  bool signalOK = signal==MAT_OK || signal==MAT_APPLY;
+
+  if((equationName.isEmpty()) && signalOK ) {
+    logMessage("Refusing to add/update equation without name");
+    return;
+  }
+  
+  if( signalOK ) {
+    if(pe->menuAction != NULL) {
+      pe->menuAction->setText(equationName);
+      logMessage("Equation updated");
+      if ( signal==MAT_OK ) pe->close();
+    }
+  } else if (signal==MAT_NEW) {
+    addEquationSlot();
+
+  } else if(signal == MAT_DELETE) {
+
+    for( int i = 0; i < bodyPropertyEditor.size(); i++ ) {
+       BodyPropertyEditor *body = bodyPropertyEditor[i];
+
+       if(!body)
+	 continue;
+       
+       if ( body->equation == pe )
+	 body->equation = NULL;
+    }
+
+    // Equation is not in menu:
+    if(pe->menuAction == NULL) {
+      logMessage("Ready");
+      pe->close();
+      return;
+    }
+
+    // Delete from menu:
+    delete pe->menuAction;
+    pe->menuAction = NULL;
+    pe->close();
+
+    int k = equationEditor.indexOf(pe);
+    if(k>=0) equationEditor.remove(k);
+
+    logMessage("Equation deleted");
+  }
+}
+
+// signal (QAction*) emitted by equationMenu when an item has been selected:
+//-----------------------------------------------------------------------------
+void MainWindow::equationSelectedSlot(QAction* act)
+{
+  // Edit the selected material:
+  for(int i = 0; i < equationEditor.size(); i++) {
+    DynamicEditor *pe = equationEditor[i];
+    if(pe->menuAction == act) {
+      pe->applyButton->setText("Update");
+      pe->applyButton->setIcon(QIcon(":/icons/dialog-ok-apply.png"));
+      pe->discardButton->setText("Remove");
+      pe->discardButton->setIcon(QIcon(":/icons/list-remove.png"));
+      createBodyCheckBoxes(BODY_EQUATION,pe);
+      pe->show(); pe->raise();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::equationBodyChanged(int state)
+{
+  QWidget *a = (QWidget *)QObject::sender();
+  if(glWidget->getMesh()) {
+     BodyPropertyEditor *body = (BodyPropertyEditor *)a->property("body").toULongLong();
+     populateBodyComboBoxes(body);
+     if ( state ) {
+       DynamicEditor *mat  = (DynamicEditor *)a->property("editor").toULongLong();
+       QString mat_name = mat->nameEdit->text().trimmed();
+       int ind = body->ui.equationCombo->findText(mat_name);
+       body->touched = true;
+       body->equation = mat;
+       body->ui.equationCombo->setCurrentIndex(ind);
+     } else {
+       body->equation = NULL;
+       body->ui.equationCombo->setCurrentIndex(-1);
+     }
+  }
+}
+
+
+//*****************************************************************************
+
+// Model -> Material -> Add...
+//-----------------------------------------------------------------------------
+void MainWindow::addMaterialSlot()
+{
+  DynamicEditor *pe = new DynamicEditor;
+  materialEditor.append(pe);
+  int current = materialEditor.size() - 1;
+
+  pe->setupTabs(elmerDefs, "Material", current );
+  pe->applyButton->setText("Add");
+  pe->applyButton->setIcon(QIcon(":/icons/list-add.png"));
+  pe->discardButton->setText("Cancel");
+  pe->discardButton->setIcon(QIcon(":/icons/dialog-close.png"));
+
+  connect(pe, SIGNAL(dynamicEditorReady(int,int)), this, SLOT(matEditorFinishedSlot(int,int)));
+
+  // Use "spareButton" to invoke material library:
+  pe->spareButton->setText("Material library");
+  pe->spareButton->show();
+  pe->spareButton->setIcon(QIcon(":/icons/tools-wizard.png"));
+  connect(pe, SIGNAL(dynamicEditorSpareButtonClicked(int,int)), this, SLOT(showMaterialLibrary(int,int)));
+
+  connect( pe->nameEdit, SIGNAL(textChanged(QString)), this,
+        SLOT(dynamicEditorNameChange(QString)) );
+
+  // Material is new - add to menu:
+  const QString &materialName = pe->nameEdit->text().trimmed();
+  QAction *act = new QAction(materialName, this);
+  materialMenu->addAction(act);
+  pe->menuAction = act;
+
+  createBodyCheckBoxes(BODY_MATERIAL,pe);
+  pe->show(); pe->raise();
+
+}
+
+
+void MainWindow::showMaterialLibrary(int tab, int ID)
+{
+  materialLibrary->editor = materialEditor[ID];
+  materialLibrary->elmerDefs = this->elmerDefs;
+  materialLibrary->show();
+}
+
+// signal (int,int) emitted by material editor when ready:
+//-----------------------------------------------------------------------------
+void MainWindow::matEditorFinishedSlot(int signal, int id)
+{
+  DynamicEditor *pe = materialEditor[id];
+  
+  const QString &materialName = pe->nameEdit->text().trimmed();
+
+  bool signalOK = signal==MAT_OK || signal==MAT_APPLY;
+  if( materialName.isEmpty() && signalOK ) {
+    logMessage("Refusing to add/update material with no name");
+    return;
+  }
+  
+  if( signalOK ) {
+    if(pe->menuAction != NULL) {
+      pe->menuAction->setText(materialName);
+      logMessage("Material updated");
+      if ( signal == MAT_OK ) pe->close();
+      return;
+    }
+  } else if ( signal==MAT_NEW ) {
+    
+    addMaterialSlot();
+
+  } else if(signal == MAT_DELETE) {
+
+    for( int i = 0; i < bodyPropertyEditor.size(); i++ ) {
+      BodyPropertyEditor *body = bodyPropertyEditor[i];
+      
+      if(!body)
+	continue;
+
+      if ( body->material == pe )
+	body->material = NULL;
+    }
+
+    // Material is not in menu:
+    if(pe->menuAction == NULL) {
+      logMessage("Ready");
+      pe->close();
+      return;
+    }
+
+    // Delete from menu:
+    delete pe->menuAction;
+    pe->menuAction = NULL;
+    pe->close();
+
+    int k = materialEditor.indexOf(pe);
+    if(k>=0) materialEditor.remove(k);
+
+    logMessage("Material deleted");
+
+  } else {
+    cout << "Matedit: unknown signal" << endl;
+  }
+}
+
+// signal (QAction*) emitted by materialMenu when an item has been selected:
+//-----------------------------------------------------------------------------
+void MainWindow::materialSelectedSlot(QAction* act)
+{
+  // Edit the selected material:
+  for(int i = 0; i < materialEditor.size(); i++) {
+    DynamicEditor *pe = materialEditor[i];
+
+    if(pe->menuAction == act) {
+      pe->applyButton->setText("Update");
+      pe->applyButton->setIcon(QIcon(":/icons/dialog-ok-apply.png"));
+      pe->discardButton->setText("Remove");
+      pe->discardButton->setIcon(QIcon(":/icons/list-remove.png"));
+      createBodyCheckBoxes(BODY_MATERIAL, pe);
+      pe->show(); pe->raise();
+    }
+  }
+}
+
+
+void MainWindow::materialBodyChanged(int state)
+{
+  QWidget *a = (QWidget *)QObject::sender();
+  if(glWidget->hasMesh()) {
+     BodyPropertyEditor *body = (BodyPropertyEditor *)a->property("body").toULongLong();
+     populateBodyComboBoxes( body);
+ 
+     if ( state > 0 ) {
+       DynamicEditor *mat = (DynamicEditor *)a->property("editor").toULongLong();
+       QString mat_name = mat->nameEdit->text().trimmed();
+       int ind = body->ui.materialCombo->findText(mat_name);
+
+       body->touched = true;
+       body->material = mat;
+       body->ui.materialCombo->setCurrentIndex(ind);
+     } else {
+       body->material = NULL;
+       body->ui.materialCombo->setCurrentIndex(-1);
+     }
+  }
+}
+
+
+//*****************************************************************************
+
+// Model -> Body force -> Add...
+//-----------------------------------------------------------------------------
+void MainWindow::addBodyForceSlot()
+{
+  DynamicEditor *pe = new DynamicEditor;
+  bodyForceEditor.append(pe);
+  int current = bodyForceEditor.size() - 1;
+
+  pe->setupTabs(elmerDefs, "BodyForce", current );
+
+  pe->applyButton->setText("Add");
+  pe->applyButton->setIcon(QIcon(":/icons/list-add.png"));
+  pe->discardButton->setText("Cancel");
+  pe->discardButton->setIcon(QIcon(":/icons/dialog-close.png"));
+
+  connect(pe, SIGNAL(dynamicEditorReady(int,int)),
+	  this, SLOT(bodyForceEditorFinishedSlot(int,int)));
+
+  // Body force is new - add to menu:
+  const QString &bodyForceName = pe->nameEdit->text().trimmed();
+  QAction *act = new QAction(bodyForceName, this);
+  bodyForceMenu->addAction(act);
+  pe->menuAction = act;
+
+  connect( pe->nameEdit, SIGNAL(textChanged(QString)), this,
+        SLOT(dynamicEditorNameChange(QString)) );
+
+  createBodyCheckBoxes( BODY_FORCE, pe );
+  pe->show(); pe->raise();
+}
+
+// signal (int,int) emitted by body force editor when ready:
+//-----------------------------------------------------------------------------
+void MainWindow::bodyForceEditorFinishedSlot(int signal, int id)
+{
+  DynamicEditor *pe = bodyForceEditor[id];
+  
+  const QString &bodyForceName = pe->nameEdit->text().trimmed();
+
+  bool signalOK = signal==MAT_OK || signal==MAT_APPLY;
+  
+  if((bodyForceName.isEmpty()) && signalOK ) {
+    logMessage("Refusing to add/update body force with no name");
+    return;
+  }
+  
+  if( signalOK ) {
+    if(pe->menuAction != NULL) {
+      pe->menuAction->setText(bodyForceName);
+      logMessage("Body force updated");
+      if ( signal==MAT_OK ) pe->close();
+    }
+
+  } else if (signal==MAT_NEW) {
+     addBodyForceSlot(); 
+
+  } else if(signal == MAT_DELETE) {
+    for( int i = 0; i < bodyPropertyEditor.size(); i++ ) {
+      BodyPropertyEditor *body = bodyPropertyEditor[i];
+
+      if(!body)
+	continue;
+
+      if ( body->force == pe )
+	body->force = NULL;
+    }
+
+    if(pe->menuAction == NULL) {
+      logMessage("Ready");
+      pe->close();
+      return;
+    }
+    
+    // Delete from menu:
+    delete pe->menuAction;
+    pe->menuAction = NULL;
+    pe->close();
+
+    int k = bodyForceEditor.indexOf(pe);
+    if(k>=0) bodyForceEditor.remove(k);
+
+    logMessage("Body force deleted");
+  }
+}
+
+// signal (QAction*) emitted by bodyForceMenu when an item has been selected:
+//-----------------------------------------------------------------------------
+void MainWindow::bodyForceSelectedSlot(QAction* act)
+{
+  // Edit the selected body force:
+  for(int i = 0; i < bodyForceEditor.size(); i++) {
+    DynamicEditor *pe = bodyForceEditor[i];
+    if(pe->menuAction == act) {
+      pe->applyButton->setText("Update");
+      pe->applyButton->setIcon(QIcon(":/icons/dialog-ok-apply.png"));
+      pe->discardButton->setText("Remove");
+      pe->discardButton->setIcon(QIcon(":/icons/list-remove.png"));
+      createBodyCheckBoxes( BODY_FORCE, pe );
+      pe->show(); pe->raise();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::forceBodyChanged(int state)
+{
+  QWidget *a = (QWidget *)QObject::sender();
+  if(glWidget->hasMesh()) {
+     BodyPropertyEditor *body = (BodyPropertyEditor *)a->property("body").toULongLong();
+     populateBodyComboBoxes(body);
+ 
+     if ( state ) {
+       DynamicEditor *mat  = (DynamicEditor *)a->property("editor").toULongLong();
+       QString mat_name = mat->nameEdit->text().trimmed();
+       int ind = body->ui.bodyForceCombo->findText(mat_name);
+
+       body->touched = true;
+       body->force = mat;
+       body->ui.bodyForceCombo->setCurrentIndex(ind);
+     } else {
+       body->force = NULL;
+       body->ui.bodyForceCombo->setCurrentIndex(-1);
+     }
+  }
+}
+
+
+//*****************************************************************************
+
+// Model -> Initial condition -> Add...
+//-----------------------------------------------------------------------------
+void MainWindow::addInitialConditionSlot()
+{
+  DynamicEditor *pe = new DynamicEditor;
+  initialConditionEditor.append(pe);
+  int current = initialConditionEditor.size() - 1;
+  
+  pe->setupTabs(elmerDefs, "InitialCondition", current );
+
+  pe->applyButton->setText("Add");
+  pe->applyButton->setIcon(QIcon(":/icons/list-add.png"));
+  pe->discardButton->setText("Cancel");
+  pe->discardButton->setIcon(QIcon(":/icons/dialog-close.png"));
+  
+  connect(pe, SIGNAL(dynamicEditorReady(int,int)),
+	  this, SLOT(initialConditionEditorFinishedSlot(int,int)));
+
+    // Initial condition is new - add to menu:
+  const QString &initialConditionName = pe->nameEdit->text().trimmed();
+  QAction *act = new QAction(initialConditionName, this);
+  initialConditionMenu->addAction(act);
+  pe->menuAction = act;
+
+  connect( pe->nameEdit, SIGNAL(textChanged(QString)), this,
+        SLOT(dynamicEditorNameChange(QString)) );
+
+  createBodyCheckBoxes( BODY_INITIAL, pe );
+  pe->show(); pe->raise();
+}
+
+// signal (int,int) emitted by initial condition editor when ready:
+//-----------------------------------------------------------------------------
+void MainWindow::initialConditionEditorFinishedSlot(int signal, int id)
+{
+  DynamicEditor *pe = initialConditionEditor[id];
+  
+  const QString &initialConditionName = pe->nameEdit->text().trimmed();
+  
+  bool signalOK = signal==MAT_OK || signal==MAT_APPLY;
+  if((initialConditionName.isEmpty()) && signalOK ) {
+    logMessage("Refusing to add/update initial condition with no name");
+    return;
+  }
+  
+  if( signalOK ) {
+    if(pe->menuAction != NULL) {
+      pe->menuAction->setText(initialConditionName);
+      logMessage("Initial condition updated");
+      if ( signal==MAT_OK ) pe->close();
+    }
+  } else if (signal==MAT_NEW ) {
+     addInitialConditionSlot();
+
+  } else if(signal == MAT_DELETE) {
+
+    for( int i = 0; i < bodyPropertyEditor.size(); i++ ) {
+      BodyPropertyEditor *body = bodyPropertyEditor[i];
+
+      if(!body)
+	continue;
+
+      if ( body->initial == pe )
+	body->initial = NULL;
+    }
+
+    // Initial condition is not in menu:
+    if(pe->menuAction == NULL) {
+      logMessage("Ready");
+      pe->close();
+      return;
+    }
+    
+    // Delete from menu:
+    delete pe->menuAction;
+    pe->menuAction = NULL;
+    pe->close();
+    
+    int k = initialConditionEditor.indexOf(pe);
+    if(k>=0) initialConditionEditor.remove(k);
+
+    logMessage("Initial condition deleted");
+  }
+}
+
+// signal (QAction*) emitted by initialConditionMenu when item selected:
+//-----------------------------------------------------------------------------
+void MainWindow::initialConditionSelectedSlot(QAction* act)
+{
+  // Edit the selected initial condition:
+  for(int i = 0; i < initialConditionEditor.size(); i++) {
+    DynamicEditor *pe = initialConditionEditor[i];
+    if(pe->menuAction == act) {
+      pe->applyButton->setText("Update");
+      pe->applyButton->setIcon(QIcon(":/icons/dialog-ok-apply.png"));
+      pe->discardButton->setText("Remove");
+      pe->discardButton->setIcon(QIcon(":/icons/list-remove.png"));
+      createBodyCheckBoxes( BODY_INITIAL, pe );
+      pe->show(); pe->raise();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::initialBodyChanged(int state)
+{
+  QWidget *a = (QWidget *)QObject::sender();
+  if(glWidget->hasMesh()) {
+     BodyPropertyEditor *body = (BodyPropertyEditor *)a->property("body").toULongLong();
+     populateBodyComboBoxes( body);
+ 
+     if ( state ) {
+       DynamicEditor *mat  = (DynamicEditor *)a->property("editor").toULongLong();
+       QString mat_name = mat->nameEdit->text().trimmed();
+       int ind = body->ui.initialConditionCombo->findText(mat_name);
+       body->touched = true;
+       body->initial = mat;
+       body->ui.initialConditionCombo->setCurrentIndex(ind);
+     } else {
+       body->initial = NULL;
+       body->ui.initialConditionCombo->setCurrentIndex(-1);
+     }
+  }
+}
+
+
+//*****************************************************************************
+//-----------------------------------------------------------------------------
+void MainWindow::createBoundaryCheckBoxes(DynamicEditor *pe)
+{
+  if(!glWidget->hasMesh()) return;
+
+  if ( pe->spareScroll->widget() ) {
+    delete pe->spareScroll->widget();
+  }
+
+  QGridLayout *slayout = new QGridLayout;
+  QLabel *l = new QLabel(tr("Apply to boundaries:"));
+  int count=0,even=0;
+
+  slayout->addWidget(l,count,0);
+  count++;
+
+
+  for( int i=0; i<glWidget->boundaryMap.count(); i++ )
+  {
+     int n=glWidget->boundaryMap.key(i);
+     if ( n >= 0 ) {
+       int m = glWidget->boundaryMap.value(n);
+
+       if(m >= boundaryPropertyEditor.size())
+	 boundaryPropertyEditor.resize(m + 1);
+
+       if(!boundaryPropertyEditor[m])
+	 boundaryPropertyEditor[m] = new BoundaryPropertyEditor;
+
+	BoundaryPropertyEditor *boundary = boundaryPropertyEditor[m];
+	
+        populateBoundaryComboBoxes(boundary);
+
+	// TODO: check this
+        QString title =  ""; // boundary->ui.nameEdit->text().trimmed();
+        QCheckBox *a;
+
+        if ( title.isEmpty() )
+          a = new QCheckBox("Boundary " + QString::number(n));
+        else
+          a = new QCheckBox(title);
+
+        if (glWidget->stateBcColors) {
+          int c[3];
+          QPixmap pm(16,16);
+
+          GLWidget::indexColors(c, n);
+          pm.fill(qRgb(c[0], c[1], c[2]));
+          a->setIcon(QIcon(pm));
+        }
+
+        DynamicEditor *p = NULL;
+
+        p=boundary->condition;
+        connect(a, SIGNAL(stateChanged(int)), this, SLOT(bcBoundaryChanged(int)));
+
+        a->setProperty( "boundary", (qulonglong)boundary );
+        a->setProperty( "condition", (qulonglong)pe );
+
+        if ( p==pe )
+          a->setChecked(true);
+        else if ( p != NULL )
+          a->setEnabled(false);
+
+        slayout->addWidget(a,count,even);
+        even = 1-even;
+        if (!even) count++;
+     }
+  }
+
+  QGroupBox *box = new QGroupBox;
+  box->setLayout(slayout);
+
+  pe->spareScroll->setWidget(box);
+  pe->spareScroll->setMinimumHeight(80);
+  pe->spareScroll->show();
+}
+
+
+//-----------------------------------------------------------------------------
+
+// Model -> Boundary condition -> Add...
+//-----------------------------------------------------------------------------
+void MainWindow::addBoundaryConditionSlot()
+{
+  DynamicEditor *pe = new DynamicEditor;
+  boundaryConditionEditor.append(pe);
+  int current = boundaryConditionEditor.size() - 1;
+
+  pe->setupTabs(elmerDefs, "BoundaryCondition", current );
+  
+  pe->applyButton->setText("Add");
+  pe->applyButton->setIcon(QIcon(":/icons/list-add.png"));
+  pe->discardButton->setText("Cancel");
+  pe->discardButton->setIcon(QIcon(":/icons/dialog-close.png"));
+  pe->show();
+  
+  connect(pe, SIGNAL(dynamicEditorReady(int,int)),
+	  this, SLOT(boundaryConditionEditorFinishedSlot(int,int)));
+
+  // Boundary condition is new - add to menu:
+  const QString &boundaryConditionName = pe->nameEdit->text().trimmed();
+  QAction *act = new QAction(boundaryConditionName, this);
+  boundaryConditionMenu->addAction(act);
+  pe->menuAction = act;
+
+  connect( pe->nameEdit, SIGNAL(textChanged(QString)), this,
+        SLOT(dynamicEditorNameChange(QString)) );
+
+  createBoundaryCheckBoxes(pe);
+}
+
+// signal (int,int) emitted by boundary condition editor when ready:
+//-----------------------------------------------------------------------------
+void MainWindow::boundaryConditionEditorFinishedSlot(int signal, int id)
+{
+  DynamicEditor *pe = boundaryConditionEditor[id];
+  
+  const QString &boundaryConditionName = pe->nameEdit->text().trimmed();
+  
+  bool signalOK = signal==MAT_OK || signal==MAT_APPLY;
+
+  if((boundaryConditionName.isEmpty()) && signalOK ) {
+    logMessage("Refusing to add/update boundary condition with no name");
+    return;
+  }
+  
+  if( signalOK ) {
+    if(pe->menuAction != NULL) {
+      pe->menuAction->setText(boundaryConditionName);
+      logMessage("Boundary condition updated");
+      if ( signal==MAT_OK ) pe->close();
+    }
+  } else if ( signal==MAT_NEW ) {
+    addBoundaryConditionSlot();
+
+  } else if(signal == MAT_DELETE) {
+
+    pe->nameEdit->setText(QString());
+
+    for( int i=0; i < boundaryPropertyEditor.size(); i++ ) {
+      BoundaryPropertyEditor *bndry = boundaryPropertyEditor[i];
+      
+      if(!bndry)
+	continue;
+
+       if ( bndry->condition == pe ) {
+           bndry->condition=NULL;
+       }
+    }
+
+    // Boundary condition is not in menu:
+    if(pe->menuAction == NULL) {
+      logMessage("Ready");
+      pe->close();
+      return;
+    }
+    
+    // Delete from menu:
+    delete pe->menuAction;
+    pe->menuAction = NULL;
+    pe->close();
+
+    int k = boundaryConditionEditor.indexOf(pe);
+    if(k>=0) {
+        boundaryConditionEditor.remove(k);
+    }
+
+    logMessage("Boundary condition deleted");
+  }
+}
+
+// signal (QAction*) emitted by boundaryConditionMenu when item selected:
+//-----------------------------------------------------------------------------
+void MainWindow::boundaryConditionSelectedSlot(QAction* act)
+{
+  // Edit the selected boundary condition:
+  for(int i = 0; i < boundaryConditionEditor.size(); i++) {
+    DynamicEditor *pe = boundaryConditionEditor[i];
+    if(pe->menuAction == act) {
+      pe->applyButton->setText("Update");
+      pe->applyButton->setIcon(QIcon(":/icons/dialog-ok-apply.png"));
+      pe->discardButton->setText("Remove");
+      pe->discardButton->setIcon(QIcon(":/icons/list-remove.png"));
+      createBoundaryCheckBoxes(pe);
+      pe->show(); pe->raise();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::bcBoundaryChanged(int state)
+{
+  QWidget *a = (QWidget *)QObject::sender();
+  if(glWidget->hasMesh()) {
+     BoundaryPropertyEditor *boundary = 
+           (BoundaryPropertyEditor *)a->property("boundary").toULongLong();
+     populateBoundaryComboBoxes(boundary);
+ 
+     if ( state ) {
+       DynamicEditor *mat  = (DynamicEditor *)a->property("condition").toULongLong();
+       QString mat_name = mat->nameEdit->text().trimmed();
+       int ind = boundary->ui.boundaryConditionCombo->findText(mat_name);
+       boundary->touched = true;
+       boundary->condition = mat;
+       boundary->ui.boundaryConditionCombo->setCurrentIndex(ind);
+     } else {
+       boundary->condition = NULL;
+       boundary->ui.boundaryConditionCombo->setCurrentIndex(-1);
+     }
+  }
+}
+
+
+// Model -> Set body properties
+//-----------------------------------------------------------------------------
+void MainWindow::bodyEditSlot()
+{
+  if(!glWidget->hasMesh()) {
+    logMessage("Unable to open body editor - no mesh");
+    bodyEditActive = false;
+    synchronizeMenuToState();
+    return;
+  }
+
+  bodyEditActive = !bodyEditActive;
+  glWidget->bodyEditActive = bodyEditActive;
+
+  if(bodyEditActive)
+    bcEditActive = false;
+
+  synchronizeMenuToState();
+
+  if(bodyEditActive)
+    logMessage("Double click a boundary to edit body properties");
+}
+
+
+
+// Model -> Set boundary conditions
+//-----------------------------------------------------------------------------
+void MainWindow::bcEditSlot()
+{
+  if(!glWidget->hasMesh()) {
+    logMessage("Unable to open BC editor - no mesh");
+    bcEditActive = false;
+    synchronizeMenuToState();
+    return;
+  }
+
+  bcEditActive = !bcEditActive;
+
+  if(bcEditActive)
+    bodyEditActive = false;
+
+  synchronizeMenuToState();
+
+  if(bcEditActive)
+    logMessage("Double click a boundary to edit BCs");
+}
+
+
+
+// Model -> Summary...
+//-----------------------------------------------------------------------------
+void MainWindow::modelSummarySlot()
+{
+  mesh_t *mesh = glWidget->getMesh();
+  QTextEdit *te = summaryEditor->ui.summaryEdit;
+  te->clear();
+  summaryEditor->show();
+
+  if(mesh == NULL) {
+    te->append("No mesh");
+    return;
+  }
+  
+  te->append("FINITE ELEMENT MESH");
+  te->append("Mesh dimension: " + QString::number(mesh->getCdim()));
+  te->append("Leading element dimension: " + QString::number(mesh->getDim()));
+  te->append("Nodes: " + QString::number(mesh->getNodes()));
+  te->append("Volume elements: " + QString::number(mesh->getElements()));
+  te->append("Surface elements: " + QString::number(mesh->getSurfaces()));
+  te->append("Edge elements: " + QString::number(mesh->getEdges()));
+  te->append("Point elements: " + QString::number(mesh->getPoints()));
+  te->append("");
+
+  // This is almost duplicate info with the above, they might be fused in some way...
+  te->append("ELEMENT TYPES");
+  int *elementtypes = new int[828];
+  for(int i=0;i<=827;i++)
+    elementtypes[i] = 0;
+  for(int i = 0; i < mesh->getElements(); i++)
+    elementtypes[mesh->getElement(i)->getCode()] += 1;
+  for(int i = 0; i < mesh->getSurfaces(); i++)
+    elementtypes[mesh->getSurface(i)->getCode()] += 1;
+  for(int i = 0; i < mesh->getEdges(); i++)
+    elementtypes[mesh->getEdge(i)->getCode()] += 1;
+  for(int i = 0; i < mesh->getPoints(); i++)
+    elementtypes[mesh->getPoint(i)->getCode()] += 1;
+  for(int i=827;i>0;i--)
+    if(elementtypes[i])  te->append(QString::number(i) + ": " + QString::number(elementtypes[i]));
+  te->append("");
+  delete [] elementtypes;
+
+
+  te->append("BOUNDING BOX");
+  QString coordnames="XYZ";
+  for(int j=0;j<3;j++) {
+    double mincoord, maxcoord, coord;
+    mincoord = maxcoord = mesh->getNode(0)->getX(j);
+    for(int i = 0; i < mesh->getNodes(); i++) {
+      coord = mesh->getNode(i)->getX(j);
+      if(mincoord > coord) mincoord = coord;
+      if(maxcoord < coord) maxcoord = coord;
+    }
+    te->append(coordnames[j]+"-coordinate: [ " + QString::number(mincoord) + " ,  " + QString::number(maxcoord)+" ]");
+  }
+  te->append("");
+
+  // Check equations:
+  int count = 0;
+  for(int i = 0; i < equationEditor.size(); i++) {
+    if(equationEditor[i]->menuAction != NULL)
+      count++;
+  }
+  te->append("GENERAL");
+  te->append("Equations: " + QString::number(count));
+
+  // Check materials:
+  count = 0;
+  for(int i = 0; i < materialEditor.size(); i++) {
+    if(materialEditor[i]->menuAction != NULL)
+      count++;
+  }
+  te->append("Materials: " + QString::number(count));
+
+  // Check boundary conditions:
+  count = 0;
+  for(int i = 0; i < boundaryConditionEditor.size(); i++) {
+    if( boundaryConditionEditor[i]->touched) count++;
+  }
+  te->append("Boundary conditions: " + QString::number(count));
+
+  // Check body properties:
+  count = 0;
+  for(int i = 0; i < bodyPropertyEditor.size(); i++) {
+
+    if(!bodyPropertyEditor[i])
+      continue;
+
+    if(bodyPropertyEditor[i]->touched)
+      count++;
+  }
+
+  te->append("Body properties: " + QString::number(count));
+  te->append("");
+
+  // Count volume bodies:
+  //---------------------
+  int undetermined = 0;
+  int *tmp = new int[mesh->getElements()];
+  for(int i = 0; i < mesh->getElements(); i++)
+    tmp[i] = 0;
+
+  for(int i = 0; i < mesh->getElements(); i++) {
+    element_t *e = mesh->getElement(i);
+    if(e->getNature() == PDE_BULK) {
+      if(e->getIndex() >= 0)
+	tmp[e->getIndex()]++;
+      else
+	undetermined++;
+    }
+  }
+
+  te->append("VOLUME BODIES");
+  count = 0;
+  for(int i = 0; i < mesh->getElements(); i++) {
+    if( tmp[i]>0 ) {
+      count++;
+      QString qs = "Body " + QString::number(i) + ": " 
+	+ QString::number(tmp[i]) + " volume elements";
+
+      element_t *e = mesh->getElement(i);
+      int j = e->getIndex();
+
+      if((j >= 0) && (j < bodyPropertyEditor.size()))
+	if(bodyPropertyEditor[j] && bodyPropertyEditor[j]->touched) 
+	  qs.append(" (Body property set)");
+      
+      te->append(qs);
+    }
+  }
+  te->append("Undetermined: " + QString::number(undetermined));
+  te->append("Total: " + QString::number(count) + " volume bodies");
+  te->append("");
+
+  delete [] tmp;
+
+  // Count surface bodies:
+  //---------------------
+  undetermined = 0;
+  tmp = new int[mesh->getSurfaces()];
+  for(int i = 0; i < mesh->getSurfaces(); i++)
+    tmp[i] = 0;
+
+  for(int i = 0; i < mesh->getSurfaces(); i++) {
+    surface_t *s = mesh->getSurface(i);
+    if(s->getNature() == PDE_BULK) {
+      if(s->getIndex() >= 0)
+	tmp[s->getIndex()]++;
+      else
+	undetermined++;
+    }
+  }
+
+  te->append("SURFACE BODIES");
+  count = 0;
+  for(int i = 0; i < mesh->getSurfaces(); i++) {
+    if( tmp[i]>0 ) {
+      count++;
+      QString qs = "Body " + QString::number(i) + ": " 
+	+ QString::number(tmp[i]) + " surface elements";
+
+      surface_t *s = mesh->getSurface(i);
+      int j = s->getIndex();
+
+      if((j >= 0) && (j < bodyPropertyEditor.size()))
+	if(bodyPropertyEditor[j] && bodyPropertyEditor[j]->touched)
+	  qs.append(" (Body property set)");
+
+      te->append(qs);
+    }
+  }
+  te->append("Undetermined: " + QString::number(undetermined));
+  te->append("Total: " + QString::number(count) + " surface bodies");
+  te->append("");
+
+  delete [] tmp;
+
+  // Count edge bodies:
+  //---------------------
+  undetermined = 0;
+  tmp = new int[mesh->getEdges()];
+  for(int i = 0; i < mesh->getEdges(); i++)
+    tmp[i] = 0;
+
+  for(int i = 0; i < mesh->getEdges(); i++) {
+    edge_t *e = mesh->getEdge(i);
+    if(e->getNature() == PDE_BULK) {
+      if(e->getIndex() >= 0)
+	tmp[e->getIndex()]++;
+      else
+	undetermined++;
+    }
+  }
+
+  te->append("EDGE BODIES");
+  count = 0;
+  for(int i = 0; i < mesh->getEdges(); i++) {
+    if( tmp[i]>0 ) {
+      count++;
+      QString qs = "Body " + QString::number(i) + ": " 
+	+ QString::number(tmp[i]) + " edge elements";
+
+      edge_t *e = mesh->getEdge(i);
+      int j = e->getIndex();
+
+      if((j >= 0) && (j < bodyPropertyEditor.size()))
+	if(bodyPropertyEditor[j] && bodyPropertyEditor[j]->touched) 
+	  qs.append(" (Body property set)");
+
+      te->append(qs);
+    }
+  }
+  te->append("Undetermined: " + QString::number(undetermined));
+  te->append("Total: " + QString::number(count) + " edge bodies");
+  te->append("");
+
+  delete [] tmp;
+
+  // Count surface boundaries:
+  //--------------------------
+  undetermined = 0;
+  tmp = new int[mesh->getSurfaces()];
+  for(int i = 0; i < mesh->getSurfaces(); i++)
+    tmp[i] = 0;
+  
+  for(int i = 0; i < mesh->getSurfaces(); i++) {
+    surface_t *s = mesh->getSurface(i);
+    if(s->getNature() == PDE_BOUNDARY) {
+      if(s->getIndex() >= 0)
+	tmp[s->getIndex()]++;
+      else
+	undetermined++;
+    }
+  }
+
+  te->append("SURFACE BOUNDARIES");
+  count = 0;
+  for(int i = 0; i < mesh->getSurfaces(); i++) {
+    if( tmp[i]>0 ) {
+      count++;
+      QString qs = "Boundary " + QString::number(i) + ": " 
+	+ QString::number(tmp[i]) + " surface elements";
+      
+      surface_t *s = mesh->getSurface(i);     
+      int j = s->getIndex();
+      if((j >= 0) &&(j < boundaryConditionEditor.size()))
+	if(boundaryConditionEditor[j]->touched)
+	  qs.append(" (BC set)");
+
+      te->append(qs);
+    }
+  }
+  te->append("Undetermined: " + QString::number(undetermined));
+  te->append("Total: " + QString::number(count) + " surface boundaries");
+  te->append("");
+
+  delete [] tmp;
+
+  // Count edge boundaries:
+  //--------------------------
+  undetermined = 0;
+  tmp = new int[mesh->getEdges()];
+  for(int i = 0; i < mesh->getEdges(); i++)
+    tmp[i] = 0;
+  
+  for(int i = 0; i < mesh->getEdges(); i++) {
+    edge_t *e = mesh->getEdge(i);
+    if(e->getNature() == PDE_BOUNDARY) {
+      if(e->getIndex() >= 0)
+	tmp[e->getIndex()]++;
+      else
+	undetermined++;
+    }
+  }
+
+  te->append("EDGE BOUNDARIES");
+  count = 0;
+  for(int i = 0; i < mesh->getEdges(); i++) {
+    if( tmp[i]>0 ) {
+      count++;
+      QString qs = "Boundary " + QString::number(i) + ": " 
+	+ QString::number(tmp[i]) + " edge elements";
+
+      edge_t *e = mesh->getEdge(i);
+      int j = e->getIndex();
+      if((j >= 0) && (j < boundaryConditionEditor.size()))
+	if( boundaryConditionEditor[j]->touched)
+	  qs.append(" (BC set)");
+
+      te->append(qs);
+    }
+  }
+  te->append("Undetermined: " + QString::number(undetermined));
+  te->append("Total: " + QString::number(count) + " edge boundaries");
+  te->append("");
+
+  delete [] tmp;
+}
+
+
+// Model -> Clear
+//-----------------------------------------------------------------------------
+void MainWindow::modelClearSlot()
+{
+  // clear equations:
+  for(int i = 0; i < equationEditor.size(); i++) {
+    DynamicEditor *pe = equationEditor[i];
+    if(pe->menuAction != NULL)
+      delete pe->menuAction;
+  }
+
+  for(int i = 0; i < equationEditor.size(); i++)
+    delete equationEditor[i];
+
+  equationEditor.clear();
+
+  // clear materials:
+  for(int i = 0; i < materialEditor.size(); i++) {
+    DynamicEditor *de = materialEditor[i];
+    if(de->menuAction != NULL)
+      delete de->menuAction;
+  }
+
+  for(int i = 0; i < materialEditor.size(); i++)
+    delete materialEditor[i];
+
+  materialEditor.clear();
+
+  // clear body forces:
+  for(int i = 0; i < bodyForceEditor.size(); i++) {
+    DynamicEditor *de = bodyForceEditor[i];
+    if(de->menuAction != NULL)
+      delete de->menuAction;
+  }
+  
+  for(int i = 0; i < bodyForceEditor.size(); i++)
+    delete bodyForceEditor[i];
+
+  bodyForceEditor.clear();
+
+  // clear initial conditions:
+  for(int i = 0; i < initialConditionEditor.size(); i++) {
+    DynamicEditor *de = initialConditionEditor[i];
+    if(de->menuAction != NULL)
+      delete de->menuAction;
+  }
+  
+  for(int i = 0; i < initialConditionEditor.size(); i++)
+    delete initialConditionEditor[i];
+
+  initialConditionEditor.clear();
+
+  // clear boundary conditions:
+  for(int i = 0; i < boundaryConditionEditor.size(); i++) {
+    DynamicEditor *de = boundaryConditionEditor[i];
+    if(de->menuAction != NULL)
+      delete de->menuAction;
+  }
+
+  for(int i = 0; i < boundaryConditionEditor.size(); i++)
+    if(boundaryConditionEditor[i])
+      delete boundaryConditionEditor[i];
+
+  boundaryConditionEditor.clear();
+
+  // clear boundary setting:
+  for(int i = 0; i < boundaryPropertyEditor.size(); i++)
+    if(boundaryPropertyEditor[i])
+      delete boundaryPropertyEditor[i];
+  
+  boundaryPropertyEditor.clear();
+
+  // clear body settings:
+  for(int i = 0; i < bodyPropertyEditor.size(); i++)
+    if(bodyPropertyEditor[i])
+      delete bodyPropertyEditor[i];
+  
+  bodyPropertyEditor.clear();
+}
+

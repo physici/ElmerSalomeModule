@@ -6,10 +6,12 @@ Created on Sat Sep  3 14:31:15 2016
 """
 
 from PyQt4 import QtGui
-from PyQt4 import uic
+
 
 import sys
 import os
+
+import generalsetup
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + "\\forms\\"
@@ -20,14 +22,12 @@ def about():
                                     "Provides a handler to access ELMER configuration windows.\n" \
                                     "Requires ELMER, ELMERGUI and ELMER_HOME variable to be set.\n\n" \
                                     "Functionality provided only in Mesh-module.")
-    
-def showGeneralSetup():   
-    def applyChanges():
-        QtGui.QMessageBox.about(None, "Test", "Test")
-    qwidget = uic.loadUi(path_forms + "\\generalsetup.ui")
-    qwidget.acceptButton.clicked.connect(applyChanges)
+        
+def showGeneralSetup():
+    """Initialize an instance of GeneralSetup and returns it to Salome"""
+    qwidget = generalsetup.GeneralSetup(path_forms)
     return qwidget
-    
+
 
 #app = QtGui.QApplication(sys.argv)
 #window = showGeneralSetup()
