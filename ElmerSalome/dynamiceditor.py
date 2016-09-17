@@ -558,3 +558,12 @@ class DynamicEditor(QtGui.QWidget):
                 print("Error: Unable to set menu entry: key: " + key.toAscii().data())
         widget = widget.nextSiblingElement("widget")
         
+#if __name__ == "__main__":
+#    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
+#    app = QtGui.QApplication(sys.argv)
+#    elmerdefs = QtXml.QDomDocument()    
+#    elmerdefs.setContent(a.decode())
+#    de = DynamicEditor()
+#    de.setupTabs(elmerdefs, "Equation", 2)
+#    de.show()
+#    sys.exit(app.exec_())
