@@ -7,9 +7,12 @@ Created on Sat Sep  3 14:31:15 2016
 
 from PyQt4 import QtGui
 
+import os, os.path, sys
+import glob
+import tempfile
 
-import sys
-import os
+from xml.etree import ElementTree as et
+
 
 import generalsetup
 
@@ -28,6 +31,25 @@ def showGeneralSetup():
     qwidget = generalsetup.GeneralSetup(path_forms)
     return qwidget
 
+
+def xmlMerge(path):
+    """Merges all edf-xml files in the given directory into a temporary file\n
+    returns the temporary file object with the cursor at the beginning"""
+    
+    mybuf = tempfile.TemporaryFile()
+    
+    xml_files = glob.glob(path + "*.xmls")
+    first = None
+    for xml_file in xml_files:
+        data = et.parse(xml_file).getroot()
+        if first is None:
+            first = data
+        else:
+            first.extend(data)
+
+    mybuf.write(et.tostring(first))
+    mybuf.seek(0)
+    return mybuf
 
 #app = QtGui.QApplication(sys.argv)
 #window = showGeneralSetup()
