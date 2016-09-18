@@ -13,10 +13,8 @@ from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore
 
-from enum import Enum
-import sys
 
-class MatTypes(Enum):
+class MatTypes():
     """Enumeration class for signals"""
     MAT_APPLY = 1
     MAT_OK = 2
@@ -92,71 +90,105 @@ class DynLineEdit(QtGui.QWidget):
 
 class DynamicEditor(QtGui.QWidget):
     """DynamicEditor base class"""
-    
+
     #signals
     dynamicEditorSpareButtonClicked = QtCore.pyqtSignal(int, int,
                                                         name = "dynamicEditorSpareButtonClicked")
     dynamicEditorReady = QtCore.pyqtSignal(int, int,
                                            name = "dynamicEditorReady")
-    
-    h = hash_entry_t()
-    qhash = {}
+
        
     def __init__(self):
         """Constructor"""
         super(DynamicEditor, self).__init__()
+        
+        #public
         self.menuAction = None
         self.ID = -1
         self.touched = False
         
-    
+        self.okButton = None
+        self.newButton = None
+        self.applyButton = None
+        self.spareButton = None
+        self.discardButton = None
+        
+        self.h = hash_entry_t()
+        self.qhash = {}
+
+        self.tabWidget = None
+        self.nameEdit = None
+        self.tabs = None
+        
+        self.spareBox = None
+        self.spareScroll = None
+                
+        #private
+        self._root = None
+        self._all_stuff = None
+        self._element = None
+        self._name = None
+        self._section = None
+        self._param = None
+     
+
+   
     def setupTabs(self, elmerDefs , Section, ID):
         """Creates the taps of the dynamic widget according to the elmerDefs"""
         self.ID = ID
 
+        layout = self.layout()
+        if(layout != None):
+            item = layout.takeAt(0)
+            while(item != 0):
+                item = None
+                if(self.tabWidget != None):
+                    self.tabWidget.clear()
+                    self.tabWidget = None
+                item = layout.takeAt(0)
+            self.layout = None
+
         #get root element
-        root = elmerDefs.documentElement()
+        self._root = elmerDefs.documentElement()
         
-        tabWidget = QtGui.QTabWidget()
-        tabWidget.setUsesScrollButtons(True)
-        tabWidget.setElideMode(QtCore.Qt.ElideNone)
+        self.tabWidget = QtGui.QTabWidget()
+        self.tabWidget.setUsesScrollButtons(True)
+        self.tabWidget.setElideMode(QtCore.Qt.ElideNone)
         
-        all_stuff = root.firstChildElement("ALL")
-        element = root.firstChildElement("PDE")
+        self._all_stuff = self._root.firstChildElement("ALL")
+        self._element = self._root.firstChildElement("PDE")
         
-        tabs = 0
+        self.tabs = 0
         
-        while(element.isNull() == False):
-            name = element.firstChildElement("Name")
+        while(self._element.isNull() == False):
+            self._name = self._element.firstChildElement("Name")
             grid = QtGui.QGridLayout()
             params = 0
             for x in range(0,2):
                 if(x == 0):
-                    if(name.text().strip() == "General"):
+                    if(self._name.text().trimmed() == "General"):
                         continue
-                    section = all_stuff.firstChildElement(Section)
+                    self._section = self._all_stuff.firstChildElement(Section)
                 else:
-                    section = element.firstChildElement(Section)
+                    self._section = self._element.firstChildElement(Section)
             
-                param = section.firstChildElement("Parameter")  
-      
-                params = 0
-                
-                while(param.isNull() == False):
+                self._param = self._section.firstChildElement("Parameter")  
+                      
+                while(self._param.isNull() == False):
                     
                     #label
-                    widget_type = param.attribute("Widget","Edit");
-                    widget_enabled = param.attribute("Enabled","True");
-                    widget_visible = param.attribute("Visible","True");
-                    paramType = param.firstChildElement("Type").text().strip();
-                    labelName = param.firstChildElement("Name").text().strip();
-                    sifName   = param.firstChildElement("SifName").text().strip();
+                    widget_type = self._param.attribute("Widget","Edit");
+                    widget_enabled = self._param.attribute("Enabled","True");
+                    widget_visible = self._param.attribute("Visible","True");
+                    paramType = self._param.firstChildElement("Type").text().trimmed();
+                    labelName = self._param.firstChildElement("Name").text().trimmed();
+                    sifName   = self._param.firstChildElement("SifName").text().trimmed();
                     if(sifName == ""):
                         sifName = labelName
-                    paramDefault = param.firstChildElement("DefaultValue").text().strip();
-                    whatis = param.firstChildElement("Whatis").text().strip();
-                    statusTip = param.firstChildElement("StatusTip").text().strip();
-                    fullName  = "/" + name.text().strip() + "/" 
+                    paramDefault = self._param.firstChildElement("DefaultValue").text().trimmed();
+                    whatis = self._param.firstChildElement("Whatis").text().trimmed();
+                    statusTip = self._param.firstChildElement("StatusTip").text().trimmed();
+                    fullName  = "/" + self._name.text().trimmed() + "/" 
                     fullName = fullName + Section + "/" + labelName + "/" + str(ID);
                     self.h.widget = None;
                     
@@ -182,14 +214,14 @@ class DynamicEditor(QtGui.QWidget):
                         self.h.widget = combo;
                         count = 0
                         active=0
-                        item = param.firstChildElement("Item")
+                        item = self._param.firstChildElement("Item")
                         while (item.isNull() == False):
                             itemType = item.attribute("Type", "")
                             if(itemType == "Active"):
                                 active = count
                             itemName = item.firstChildElement("Name")
                             count += 1
-                            combo.insertItem(count,itemName.text().strip())
+                            combo.insertItem(count,itemName.text().trimmed())
                             item = item.nextSiblingElement("Item")  
                         combo.setCurrentIndex(active)
                         combo.currentIndexChanged.connect(self.comboSlot)
@@ -216,7 +248,7 @@ class DynamicEditor(QtGui.QWidget):
                         self.h.widget.setWhatsThis(whatis)
                         self.h.widget.setStatusTip(statusTip)
                         self.h.widget.setProperty("dom address",fullName)
-                        self.h.elem = param
+                        self.h.elem = self._param
                         if(widget_enabled == "False"):
                             self.h.widget.setEnabled(False)
                         if(widget_type != "TextEdit"):
@@ -246,7 +278,7 @@ class DynamicEditor(QtGui.QWidget):
                             grid.addWidget(self.h.widget, params, 0)
                         self.qhash[fullName] = self.h
                                                          
-                    param = param.nextSiblingElement("Parameter")
+                    self._param = self._param.nextSiblingElement("Parameter")
                     params += 1
         
             dummyWidget = QtGui.QWidget()
@@ -262,55 +294,55 @@ class DynamicEditor(QtGui.QWidget):
             src.setWidgetResizable(True)
             
             if(params > 0):
-                tabWidget.addTab(src, name.text().strip())
+                self.tabWidget.addTab(src, self._name.text().trimmed())
             
-            tabs += 1
-            element = element.nextSiblingElement("PDE")
+            self.tabs += 1
+            self._element = self._element.nextSiblingElement("PDE")
         
         #Buttons:
         lbl = QtGui.QLabel()
         lbl.setText("Name:")
-        nameEdit  = QtGui.QLineEdit()
-        nameEdit.setText(Section + " " + str(ID+1))
+        self.nameEdit  = QtGui.QLineEdit()
+        self.nameEdit.setText(Section + " " + str(ID+1))
 
-        applyButton = QtGui.QPushButton("&Add")
+        self.applyButton = QtGui.QPushButton("&Add")
         #applyButton.setIcon(addIcon)
-        applyButton.clicked.connect(self.applyButtonClicked)
+        self.applyButton.clicked.connect(self.applyButtonClicked)
         
-        discardButton = QtGui.QPushButton("&Remove")
+        self.discardButton = QtGui.QPushButton("&Remove")
         #discardButton.setIcon(removeIcon)
-        discardButton.clicked.connect(self.discardButtonClicked)
+        self.discardButton.clicked.connect(self.discardButtonClicked)
         
-        okButton = QtGui.QPushButton("&OK")
+        self.okButton = QtGui.QPushButton("&OK")
         #okButton.setIcon(okIcon)
-        okButton.clicked.connect(self.okButtonClicked)
+        self.okButton.clicked.connect(self.okButtonClicked)
 
-        newButton = QtGui.QPushButton("&New")
-        #newButton.setIcon(newIcon)
-        newButton.clicked.connect(self.newButtonClicked)
+        self.newButton = QtGui.QPushButton("&New")
+        #self.newButton.setIcon(newIcon)
+        self.newButton.clicked.connect(self.newButtonClicked)
 
         nameLayout = QtGui.QHBoxLayout()
         nameLayout.addWidget(lbl)
-        nameLayout.addWidget(nameEdit)
+        nameLayout.addWidget(self.nameEdit)
 
         buttonLayout = QtGui.QHBoxLayout()
-        buttonLayout.addWidget(newButton)
-        buttonLayout.addWidget(applyButton)
-        buttonLayout.addWidget(okButton)
-        buttonLayout.addWidget(discardButton)
+        buttonLayout.addWidget(self.newButton)
+        buttonLayout.addWidget(self.applyButton)
+        buttonLayout.addWidget(self.okButton)
+        buttonLayout.addWidget(self.discardButton)
 
         spareButtonLayout = QtGui.QHBoxLayout()
-        spareButton = QtGui.QPushButton("SpareButton")
-        spareButton.setVisible(False)
-        spareButtonLayout.addWidget(spareButton)
-        spareButton.clicked.connect(self.spareButtonClicked)
+        self.spareButton = QtGui.QPushButton("SpareButton")
+        self.spareButton.setVisible(False)
+        spareButtonLayout.addWidget(self.spareButton)
+        self.spareButton.clicked.connect(self.spareButtonClicked)
 
-        spareScroll = QtGui.QScrollArea()
-        spareScroll.hide()
+        self.spareScroll = QtGui.QScrollArea()
+        self.spareScroll.hide()
 
         mainLayout = QtGui.QVBoxLayout()
-        mainLayout.addWidget(tabWidget)
-        mainLayout.addWidget(spareScroll)
+        mainLayout.addWidget(self.tabWidget)
+        mainLayout.addWidget(self.spareScroll)
         mainLayout.addLayout(spareButtonLayout)
         mainLayout.addLayout(nameLayout)
         mainLayout.addLayout(buttonLayout)
@@ -318,17 +350,17 @@ class DynamicEditor(QtGui.QWidget):
         
         self.setWindowTitle(Section)
         
-    def lSlot(state, self):
+    def lSlot(self, state):
         """Event when CheckBox changed"""
-        param = QtXml.QDomElement()
+        self._param = QtXml.QDomElement()
         q = QtGui.QObject.sender().property("dom address").toString()
     
         ind = int(q.lastIndexOf( '/', -1))
         ids = str(q.mid(ind,-1))
     
-        param = self.qhash[q].elem.firstChildElement("Activate")
-        while(param.isNull() != False):
-            q = param.text().strip() + ids
+        self._param = self.qhash[q].elem.firstChildElement("Activate")
+        while(self._param.isNull() != False):
+            q = self._param.text().trimmed() + ids
             self.qhash[q].widget.setEnabled(state)
             widget_visible = self.qhash[q].elem.attribute("Visible","Unknown")
             if(state == False & widget_visible != "Unknown"):
@@ -337,11 +369,11 @@ class DynamicEditor(QtGui.QWidget):
             else:
               self.qhash[q].label.show()
               self.qhash[q].widget.show()
-            param=param.nextSiblingElement("Activate")
+            self._param = self._param.nextSiblingElement("Activate")
     
-        param = self.qhash[q].elem.firstChildElement("Deactivate")
-        while(param.isNull() != False):
-             q = param.text().strip() + ids
+        self._param = self.qhash[q].elem.firstChildElement("Deactivate")
+        while(self._param.isNull() != False):
+             q = self._param.text().trimmed() + ids
              self.qhash[q].widget.setEnabled(-state)
              widget_visible = self.qhash[q].elem.attribute("Visible","Unknown")
              if(state == True & widget_visible != "Unknown" ):
@@ -350,19 +382,19 @@ class DynamicEditor(QtGui.QWidget):
              else:
                  self.qhash[q].label.show()
                  self.qhash[q].widget.show()
-        param = param.nextSiblingElement("Deactivate")
+        self._param = self._param.nextSiblingElement("Deactivate")
 
-    def textChangedSlot(text, self):
+    def textChangedSlot(self, text):
         """Event when TextBox changed"""
-        param = QtXml.QDomElement()
+        self._param = QtXml.QDomElement()
         q = QtGui.QObject.sender().property("dom address").toString()
         
         ind = int(q.lastIndexOf( '/', -1))
         ids = str(q.mid(ind,-1))
     
-        param = self.qhash[q].elem.firstChildElement("Activate");
-        while(param.isNull() != False):
-            q = param.text().strip() + ids
+        self._param = self.qhash[q].elem.firstChildElement("Activate");
+        while(self._param.isNull() != False):
+            q = self._param.text().trimmed() + ids
             widget_visible = self.qhash[q].elem.attribute("Visible","Uknown")
         
             if(text != ""):
@@ -374,9 +406,9 @@ class DynamicEditor(QtGui.QWidget):
                 if(widget_visible != "Unknown"):
                     self.qhash[q].label.hide()
                     self.qhash[q].widget.hide()
-            param = param.nextSiblingElement("Activate")
+            self._param = self._param.nextSiblingElement("Activate")
     
-    def comboSlot(select, self):
+    def comboSlot(self, select):
         """Event when comboBox changend"""
         q = QtGui.QObject.sender().property("dom address").toString()
         item = QtXml.QDomElement()
@@ -387,11 +419,11 @@ class DynamicEditor(QtGui.QWidget):
         item = self.qhash[q].elem.firstChildElement("Item")
         while(item.isNull() != False):
             itemName = item.firstChildElement("Name")
-            if(itemName.text().strip() != select):
+            if(itemName.text().trimmed() != select):
                 activ = item.firstChildElement("Activate")
                 while(activ.isNull() != False):
                     activ=activ.nextSiblingElement("Activate")
-                    s=activ.text().strip() + ids
+                    s=activ.text().trimmed() + ids
                     self.h = self.qhash[s]
                     widget_enabled = self.h.elem.attribute("Enabled","True")
                     widget_visible = self.h.elem.attribute("Visible","Unknown")
@@ -405,10 +437,10 @@ class DynamicEditor(QtGui.QWidget):
         item = self.qhash[q].elem.firstChildElement("Item")
         while(item.isNull() != False):
             itemName = item.firstChildElement("Name")
-            if(itemName.text().strip() == select ):
+            if(itemName.text().trimmed() == select ):
                 activ = item.firstChildElement("Activate")
                 while(activ.isNull() != False):
-                    s = activ.text().strip() + ids
+                    s = activ.text().trimmed() + ids
                     self.h = self.qhash[s]
                     self.h.widget.setEnabled(True)
                     self.h.label.show()
@@ -441,7 +473,7 @@ class DynamicEditor(QtGui.QWidget):
         self.touched = False
         self.dynamicEditorReady.emit(MatTypes.MAT_NEW, self.ID)
         
-    def dumpHash(projectDoc, item, self):
+    def dumpHash(self, projectDoc, item):
         for j in range(0, self.qhash.count()):
             key = self.qhash.keys()[j]
             value = self.qhash.values()[j]
@@ -467,7 +499,7 @@ class DynamicEditor(QtGui.QWidget):
             elif(elem.attribute("Widget") == "Edit"):
                 lineEdit = widget
                 itemLineEdit = projectDoc.createElement("value")
-                itemLineEditValue = projectDoc.createTextNode(lineEdit.text().strip())
+                itemLineEditValue = projectDoc.createTextNode(lineEdit.text().trimmed())
                 itemLineEdit.appendChild(itemLineEditValue)
                 itemWidget.appendChild(itemLineEdit)
                 itemWidget.setAttribute("type", "Edit")
@@ -483,7 +515,7 @@ class DynamicEditor(QtGui.QWidget):
             elif(elem.attribute("Widget") == "Combo"):
                 comboBox = widget
                 itemComboBox = projectDoc.createElement("value")
-                itemComboBoxValue = projectDoc.createTextNode(comboBox.currentText().strip())
+                itemComboBoxValue = projectDoc.createTextNode(comboBox.currentText().trimmed())
                 itemComboBox.appendChild(itemComboBoxValue)
                 itemWidget.appendChild(itemComboBox)
                 itemWidget.setAttribute("type", "Combo")
@@ -491,18 +523,18 @@ class DynamicEditor(QtGui.QWidget):
             elif(elem.attribute("Widget") == "Label"):
                 label = widget
                 itemLabel = projectDoc.createElement("value")
-                itemLabelValue = projectDoc.createTextNode(label.text().strip())
+                itemLabelValue = projectDoc.createTextNode(label.text().trimmed())
                 itemLabel.appendChild(itemLabelValue)
                 itemWidget.appendChild(itemLabel)
                 itemWidget.setAttribute("type", "Label")
                 
-    def populateHash(item):
+    def populateHash(self, item):
         widget = item.firstChildElement("widget")
         
         while(widget.isNull() != False):
-            qtype = widget.attribute("type").strip()
-            key = widget.firstChildElement("key").text().strip()
-            value = widget.firstChildElement("value").text().strip()
+            qtype = widget.attribute("type").trimmed()
+            key = widget.firstChildElement("key").text().trimmed()
+            value = widget.firstChildElement("value").text().trimmed()
             
             if(value.isEmpty()):
                 continue
@@ -550,20 +582,11 @@ class DynamicEditor(QtGui.QWidget):
                             print("Load project: type mismatch with Combo")                        
                         comboBox = widget
                         for k in range (0, comboBox.count()):
-                            current = comboBox.itemText(k).strip()
-                            if(current == value.strip()):
+                            current = comboBox.itemText(k).trimmed()
+                            if(current == value.trimmed()):
                                 comboBox.setCurrentIndex(k);
 	  
             if(match_found == False):
                 print("Error: Unable to set menu entry: key: " + key.toAscii().data())
         widget = widget.nextSiblingElement("widget")
         
-#if __name__ == "__main__":
-#    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
-#    app = QtGui.QApplication(sys.argv)
-#    elmerdefs = QtXml.QDomDocument()    
-#    elmerdefs.setContent(a.decode())
-#    de = DynamicEditor()
-#    de.setupTabs(elmerdefs, "Equation", 2)
-#    de.show()
-#    sys.exit(app.exec_())

@@ -23,29 +23,46 @@ import elmer_window_handler as ewh
 #required to keep reference to all created widgets, will be overwritten everytime
 qwidget = QtGui.QWidget()
 
+main = ewh.elmerWindowHanlder()
+
 #define about Function
 def about(context):
-    global ewh
+    global main, qwidget
     #get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
                                     "Functionality is only provided in mesh module.")
         return
-    qwidget = ewh.about()
+    qwidget = main.about()
 
 #define generalSetup function
 def generalSetup(context):
-    global ewh, qwidget
+    global main, qwidget
     #get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
                                     "Functionality is only provided in mesh module.")
         return
-    qwidget = ewh.showGeneralSetup()
+    qwidget = main.showGeneralSetup()
     qwidget.show()
+    
+def addEquation(context):
+    """Make a new equation sub-menu and call the dynamic editor"""
+    global main, qwidget
+     #get active module and check if SMESH
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.about(None, str(active_module),
+                                    "Functionality is only provided in mesh module.")
+        return   
+    
+    qwidget, equationName = main.showAddEquation()
+    qwidget.show()   
+    
     
 #declare ShowWindow-Function to plugin manager
 salome_pluginsmanager.AddFunction('ELMER/About', 'About ELMER plugin', about)
 salome_pluginsmanager.AddFunction('ELMER/General Setup', 'General setup of Elmer', generalSetup)
+salome_pluginsmanager.AddFunction('ELMER/Equation/Add', 'Add new equation', addEquation)
