@@ -13,6 +13,8 @@ from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore
 
+import sys
+
 
 class MatTypes():
     """Enumeration class for signals"""
@@ -198,7 +200,7 @@ class DynamicEditor(QtGui.QWidget):
                         edit.lineEdit.setText(paramDefault)
                         edit.name = fullName
                         edit.lineEdit.returnPressed.connect(edit.editSlot)
-                        edit.lineEdit.textChanged.connect(self.textChangedSlot)
+                        edit.lineEdit.textChanged.connect(self._textChangedSlot)
                     
                     elif(widget_type == "TextEdit"):
                         textEdit = QtGui.QTextEdit()
@@ -224,7 +226,7 @@ class DynamicEditor(QtGui.QWidget):
                             combo.insertItem(count,itemName.text().trimmed())
                             item = item.nextSiblingElement("Item")  
                         combo.setCurrentIndex(active)
-                        combo.currentIndexChanged.connect(self.comboSlot)
+                        combo.currentIndexChanged.connect(self._comboSlot)
                     
                     elif(widget_type == "CheckBox"):
                         l = QtGui.QCheckBox()
@@ -233,7 +235,7 @@ class DynamicEditor(QtGui.QWidget):
                         l.setChecked(False)
                         if(paramDefault == "True"):
                             l.setChecked(True)
-                        l.stateChanged.connect(self.lSlot)
+                        l.stateChanged.connect(self._lSlot)
                     
                     elif(widget_type == "Label"):
                         label = QtGui.QLabel()
@@ -307,19 +309,19 @@ class DynamicEditor(QtGui.QWidget):
 
         self.applyButton = QtGui.QPushButton("&Add")
         #applyButton.setIcon(addIcon)
-        self.applyButton.clicked.connect(self.applyButtonClicked)
+        self.applyButton.clicked.connect(self._applyButtonClicked)
         
         self.discardButton = QtGui.QPushButton("&Remove")
         #discardButton.setIcon(removeIcon)
-        self.discardButton.clicked.connect(self.discardButtonClicked)
+        self.discardButton.clicked.connect(self._discardButtonClicked)
         
         self.okButton = QtGui.QPushButton("&OK")
         #okButton.setIcon(okIcon)
-        self.okButton.clicked.connect(self.okButtonClicked)
+        self.okButton.clicked.connect(self._okButtonClicked)
 
         self.newButton = QtGui.QPushButton("&New")
         #self.newButton.setIcon(newIcon)
-        self.newButton.clicked.connect(self.newButtonClicked)
+        self.newButton.clicked.connect(self._newButtonClicked)
 
         nameLayout = QtGui.QHBoxLayout()
         nameLayout.addWidget(lbl)
@@ -335,7 +337,7 @@ class DynamicEditor(QtGui.QWidget):
         self.spareButton = QtGui.QPushButton("SpareButton")
         self.spareButton.setVisible(False)
         spareButtonLayout.addWidget(self.spareButton)
-        self.spareButton.clicked.connect(self.spareButtonClicked)
+        self.spareButton.clicked.connect(self._spareButtonClicked)
 
         self.spareScroll = QtGui.QScrollArea()
         self.spareScroll.hide()
@@ -350,7 +352,7 @@ class DynamicEditor(QtGui.QWidget):
         
         self.setWindowTitle(Section)
         
-    def lSlot(self, state):
+    def _lSlot(self, state):
         """Event when CheckBox changed"""
         self._param = QtXml.QDomElement()
         q = QtGui.QObject.sender().property("dom address").toString()
@@ -384,7 +386,7 @@ class DynamicEditor(QtGui.QWidget):
                  self.qhash[q].widget.show()
         self._param = self._param.nextSiblingElement("Deactivate")
 
-    def textChangedSlot(self, text):
+    def _textChangedSlot(self, text):
         """Event when TextBox changed"""
         self._param = QtXml.QDomElement()
         q = QtGui.QObject.sender().property("dom address").toString()
@@ -408,7 +410,7 @@ class DynamicEditor(QtGui.QWidget):
                     self.qhash[q].widget.hide()
             self._param = self._param.nextSiblingElement("Activate")
     
-    def comboSlot(self, select):
+    def _comboSlot(self, select):
         """Event when comboBox changend"""
         q = QtGui.QObject.sender().property("dom address").toString()
         item = QtXml.QDomElement()
@@ -454,22 +456,22 @@ class DynamicEditor(QtGui.QWidget):
     def sizeHine(self):
         return QtCore.QSize(400, 500)
     
-    def spareButtonClicked(self):
-        self.dynamicEditorSpareButtonClicked.emit(self.tabWidget.currentIndex, self.ID)
+    def _spareButtonClicked(self):
+        self.dynamicEditorSpareButtonClicked.emit(self.tabWidget.currentIndex(), self.ID)
     
-    def applyButtonClicked(self):
+    def _applyButtonClicked(self):
         self.touched = True
         self.dynamicEditorReady.emit(MatTypes.MAT_APPLY, self.ID)
     
-    def discardButtonClicked(self):
+    def _discardButtonClicked(self):
         self.touched = False
         self.dynamicEditorReady.emit(MatTypes.MAT_DELETE, self.ID) 
         
-    def okButtonClicked(self):
+    def _okButtonClicked(self):
         self.touched = False
         self.dynamicEditorReady.emit(MatTypes.MAT_OK, self.ID)
         
-    def newButtonClicked(self):
+    def _newButtonClicked(self):
         self.touched = False
         self.dynamicEditorReady.emit(MatTypes.MAT_NEW, self.ID)
         

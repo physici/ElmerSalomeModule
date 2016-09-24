@@ -7,6 +7,7 @@ Created on Sat Sep  3 14:31:15 2016
 
 from PyQt4 import QtGui
 from PyQt4 import QtXml
+from PyQt4 import QtCore
 
 import os, os.path
 import sys
@@ -15,7 +16,7 @@ import tempfile
 
 from xml.etree import ElementTree as et
 
-
+import solverparameters
 import generalsetup
 import dynamiceditor
 
@@ -26,6 +27,7 @@ path_edfs = path + "\\edf\\"
 class elmerWindowHanlder():
     
     equationEditor = []
+    solverParameterEditor = []
     _elmerdefs = None
     
     def __init__(self):
@@ -39,8 +41,13 @@ class elmerWindowHanlder():
         
     def showGeneralSetup(self):
         """Initialize an instance of GeneralSetup and returns it to Salome"""
-        qwidget = generalsetup.GeneralSetup(path_forms)
-        return qwidget
+        ge = generalsetup.GeneralSetup(path_forms)
+        return ge
+
+    def showSolverParametersEditor(self):
+        """Initialize an instance of Solver Param Editor and returns it to Salome"""
+        sp = solverparameters.SovlerParameterEditor(path_forms)
+        return sp
         
     def showAddEquation(self):
         """Creates a new instance of the dynamic editor for adding an equation"""
@@ -87,19 +94,50 @@ class elmerWindowHanlder():
                     de.close()
                     
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            #still todo
+            """ToDo"""
             return
         
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            #still todo
+            """ToDo"""
             return
         
     def editNumericalMethods(self, current, ids):
-        #still todo
-        return
-    
+        """Edit the solver specific properties"""
+
+        title = ""
+        for i in range(0, len(self.equationEditor)):
+            title = self.equationEditor[i].tabWidget.tabText(current)
+            break
+        
+        if(title == "General"):
+            sys.stdout.write("No solver controls for 'General' equation options")
+            sys.stdout.flush()
+            return
+            
+        if(current >= len(self.solverParameterEditor)):
+            self.solverParameterEditor.append(solverparameters.SovlerParameterEditor(path_forms))
+
+        spe = self.solverParameterEditor[current]
+        spe.setWindowTitle("Solver control for {}".format(title))
+        spe.solverName = title
+        
+        if(spe.generalOptions == None):
+            spe.generalOptions = dynamiceditor.DynamicEditor()
+            spe.generalOptions.setupTabs(self._elmerdefs, "Solver", current)
+            spe.solverControlTabs.insertTab(0, spe.generalOptions.tabWidget.widget(current),
+                                            "Solver specific options")
+        
+        for i in range(0, spe.generalOptions.tabWidget.count()):
+            if(spe.generalOptions.tabWidget.tabText(i) == title):
+                spe.solverControlTabs.insertTab(0, spe.generalOptions.tabWidget.widget(i),
+                                            "Solver specific options")       
+                break
+        
+        spe.show()
+            
+          
     def dynamicEditorNameChange(self, t):
-        #still todo
+        """ToDo"""
         return
                
     def xmlMerge(self, path):
@@ -125,15 +163,17 @@ class elmerWindowHanlder():
         mybuf.close()
         
         self._elmerdefs = QtXml.QDomDocument()    
-        self._elmerdefs.setContent(temp.decode())        
+        self._elmerdefs.setContent(temp)        
         
 
 #if __name__ == "__main__":
 #    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
 #    app = QtGui.QApplication(sys.argv)
-#    elmerdefs = QtXml.QDomDocument()    
-#    elmerdefs.setContent(a.decode())
+#    ewh = elmerWindowHanlder()
+#    de = ewh.showAddEquation()
 #    de.show()
+#    #sp = ewh.showSolverParametersEditor()
+#    #sp.show()
 #    sys.exit(app.exec_())
 
 
