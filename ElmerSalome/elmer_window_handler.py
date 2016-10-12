@@ -24,7 +24,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + "\\forms\\"
 path_edfs = path + "\\edf\\"
 
-class elmerWindowHanlder():
+class elmerWindowHandler():
     
     equationEditor = []
     solverParameterEditor = []
@@ -169,7 +169,7 @@ class elmerWindowHanlder():
 #if __name__ == "__main__":
 #    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
 #    app = QtGui.QApplication(sys.argv)
-#    ewh = elmerWindowHanlder()
+#    ewh = elmerWindowHandler()
 #    de = ewh.showAddEquation()
 #    de.show()
 #    #sp = ewh.showSolverParametersEditor()
