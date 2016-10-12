@@ -13,9 +13,18 @@ import salome_pluginsmanager
 import sys
 import os
 
+plugin_path = ""
 #add SALOME_PLUGIN_PATH to Python environment for easier module import
-plugin_path = os.environ.get("SALOME_PLUGINS_PATH")  + "\\ElmerSalome"
+if (os.environ.get("SALOME_PLUGINS_PATH") != None):
+    plugin_path =  os.environ.get("SALOME_PLUGINS_PATH") + "\\ElmerSalome"
+else:
+    import inspect
+    plugin_path = os.path.dirname(inspect.getfile(inspect.currentframe()))  + "\\ElmerSalome"
+
 sys.path.append(plugin_path)
+
+if not (os.path.exists("{}\\elmer_window_handler.py".format(plugin_path))):
+    sys.exit("No Elmer module found")
 
 #import window handler
 import elmer_window_handler as ewh
