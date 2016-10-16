@@ -27,6 +27,7 @@ path_edfs = path + "\\edf\\"
 class elmerWindowHandler():
     
     equationEditor = []
+    materialEditor = []
     solverParameterEditor = []
     _elmerdefs = None
     
@@ -49,7 +50,7 @@ class elmerWindowHandler():
         sp = solverparameters.SovlerParameterEditor(path_forms)
         return sp
         
-    def showAddEquation(self):
+    def showAddEquation(self, context):
         """Creates a new instance of the dynamic editor for adding an equation"""
         de = dynamiceditor.DynamicEditor()
         self.equationEditor.append(de)
@@ -72,7 +73,38 @@ class elmerWindowHandler():
         
         return de, equationName
         
+    def showAddMaterial(self, context):
+        """Creates a new instance of the dynamic editor for adding a material"""
+        
+        de = dynamiceditor.DynamicEditor()
+        self.materialEditor.append(de)
+        current = len(self.materialEditor) - 1
+        
+        de.setupTabs(self._elmerDefs, "Material", current)
+        de.applyButton.setText("Add")
+        de.discardButton.setText("Cancel")
+          
+        de.dynamicEditorReady[int, int].connect(self.matEditorFinishedSlot)
+
+        #Use "spareButton" to invoke material library:
+        de.spareButton.setText("Material library")
+        de.spareButton.show()
+        
+        de.dynamicEditorSpareButtonClicked[int, int].connect(self.showMaterialLibrary)
+        de.nameEdit.textChanged.connect(self.dynamicEditorNameChange)
+
+#        // Material is new - add to menu:
+#        const QString &materialName = pe->nameEdit->text().trimmed();
+#        QAction *act = new QAction(materialName, this);
+#        materialMenu->addAction(act);
+#        pe->menuAction = act;
+          
+        return de
+        
     def pdeEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the solver settings\n
+        signal = the button hit\n
+        ids = ID of the equation set"""
         de = self.equationEditor[ids]
         equationName = de.nameEdit.text().trimmed()
         signalOK = False
@@ -86,12 +118,8 @@ class elmerWindowHandler():
             return
         
         if(signalOK):
-            if(de.menuAction != None):
-                de.menuAction = equationName
-                sys.stdout.write("Update\n")
-                sys.stdout.flush()
-                if(signal == dynamiceditor.MatTypes.MAT_OK):
-                    de.close()
+            """ToDo"""
+            return
                     
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """ToDo"""
@@ -102,7 +130,8 @@ class elmerWindowHandler():
             return
         
     def editNumericalMethods(self, current, ids):
-        """Edit the solver specific properties"""
+        """Edit the solver specific properties\n
+        current = ID of the equation set that should be edited"""
 
         title = ""
         for i in range(0, len(self.equationEditor)):
