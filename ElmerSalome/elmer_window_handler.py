@@ -25,14 +25,18 @@ path_forms = path + "\\forms\\"
 path_edfs = path + "\\edf\\"
 
 class elmerWindowHandler():
-    
+
     equationEditor = []
     materialEditor = []
     solverParameterEditor = []
-    _elmerdefs = None
-    
+    _elmerDefs = None
+    _listview = None
+    _window = None
+
+       
     def __init__(self):
-        self.xmlMerge(path_edfs)        
+        self.xmlMerge(path_edfs) 
+        self._parent = self
 
     def about(self):
         QtGui.QMessageBox.about(None, "About ELMER window handler",
@@ -50,14 +54,19 @@ class elmerWindowHandler():
         sp = solverparameters.SovlerParameterEditor(path_forms)
         return sp
         
-    def showAddEquation(self, context):
+    def showAddEquation(self):
         """Creates a new instance of the dynamic editor for adding an equation"""
+        
+        #create a horizontal split layout
+        window = QtGui.QWidget()
+        layout = QtGui.QHBoxLayout()
+
         de = dynamiceditor.DynamicEditor()
         self.equationEditor.append(de)
         current = len(self.equationEditor) - 1
-        de.setupTabs(self._elmerdefs, "Equation", current)
+        de.setupTabs(self._elmerDefs, "Equation", current)
         
-        de.applyButton.setText("Add")
+        de.applyButton.setText("Apply")
         de.discardButton.setText("Cancel")
     
         de.dynamicEditorReady[int, int].connect(self.pdeEditorFinishedSlot)    
@@ -67,21 +76,40 @@ class elmerWindowHandler():
         de.dynamicEditorSpareButtonClicked[int, int].connect(self.editNumericalMethods)
         
         de.nameEdit.textChanged.connect(self.dynamicEditorNameChange)
+                    
+        #fill list view with items from material collection
+        listview = QtGui.QListWidget()
+        for equation in self.equationEditor:
+            item = QtGui.QListWidgetItem()
+            item.setText(equation.nameEdit.text())
+            listview.addItem(item)
+        listview.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Expanding)
+            
+        layout.addWidget(listview)
+        layout.addWidget(de)
+            
+        window.setWindowTitle("Equation Editor")
+        window.setLayout(layout)
         
-        #todo add menu entry in salome
-        equationName = de.nameEdit.text().trimmed()
+        self._window = window
+        self._listview = listview
+        window.show()
         
-        return de, equationName
+        return window
         
-    def showAddMaterial(self, context):
+    def showAddMaterial(self):
         """Creates a new instance of the dynamic editor for adding a material"""
-        
+
+        #create a horizontal split layout
+        window = QtGui.QWidget()
+        layout = QtGui.QHBoxLayout()
+              
         de = dynamiceditor.DynamicEditor()
         self.materialEditor.append(de)
         current = len(self.materialEditor) - 1
         
         de.setupTabs(self._elmerDefs, "Material", current)
-        de.applyButton.setText("Add")
+        de.applyButton.setText("Apply")
         de.discardButton.setText("Cancel")
           
         de.dynamicEditorReady[int, int].connect(self.matEditorFinishedSlot)
@@ -92,43 +120,78 @@ class elmerWindowHandler():
         
         de.dynamicEditorSpareButtonClicked[int, int].connect(self.showMaterialLibrary)
         de.nameEdit.textChanged.connect(self.dynamicEditorNameChange)
-
-#        // Material is new - add to menu:
-#        const QString &materialName = pe->nameEdit->text().trimmed();
-#        QAction *act = new QAction(materialName, this);
-#        materialMenu->addAction(act);
-#        pe->menuAction = act;
           
-        return de
+        #fill list view with items from material collection
+        listview = QtGui.QListWidget()
+        for mat in self.materialEditor:
+            item = QtGui.QListWidgetItem()
+            item.setText(mat.nameEdit.text())
+            listview.addItem(item)
+        listview.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Expanding)
+            
+        layout.addWidget(listview)
+        layout.addWidget(de)
+            
+        window.setWindowTitle("Equation Editor")
+        window.setLayout(layout)
+        
+        self._window = window
+        self._listview = listview
+        window.show()
+        
+        return window
+    
+    def matEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the solver settings\n
+        signal = the button hit\n
+        ids = ID of the equation set"""
+
+        return      
+        
+    def showMaterialLibrary(self, signal, ids):
+        """Method for handling the button events in the solver settings\n
+        signal = the button hit\n
+        ids = ID of the equation set"""
+
+        return  
+
         
     def pdeEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the solver settings\n
         signal = the button hit\n
         ids = ID of the equation set"""
+        listview = self._listview
+        item = listview.item(ids)
         de = self.equationEditor[ids]
-        equationName = de.nameEdit.text().trimmed()
+        equationName = str(de.nameEdit.text()).strip()
+        
         signalOK = False
         if(signal == dynamiceditor.MatTypes.MAT_OK or
             signal == dynamiceditor.MatTypes.MAT_APPLY):
             signalOK = True
 
-        if(equationName.isEmpty() and signalOK):
+        if(signalOK and not equationName):
             sys.stdout.write("No equation name\n")
             sys.stdout.flush()
             return
         
         if(signalOK):
             """ToDo"""
-            return
+            item.setText(equationName)
+            if signal == dynamiceditor.MatTypes.MAT_OK:
+                self._window.close()
                     
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            """ToDo"""
-            return
+            """ToDo"""          
+            ewh = elmerWindowHandler()
+            de = ewh.showAddEquation()
+            self._window.close()
         
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             """ToDo"""
-            return
-        
+            del self.equationEditor[ids]
+            self._window.close()
+            
     def editNumericalMethods(self, current, ids):
         """Edit the solver specific properties\n
         current = ID of the equation set that should be edited"""
@@ -152,7 +215,7 @@ class elmerWindowHandler():
         
         if(spe.generalOptions == None):
             spe.generalOptions = dynamiceditor.DynamicEditor()
-            spe.generalOptions.setupTabs(self._elmerdefs, "Solver", current)
+            spe.generalOptions.setupTabs(self._elmerDefs, "Solver", current)
             spe.solverControlTabs.insertTab(0, spe.generalOptions.tabWidget.widget(current),
                                             "Solver specific options")
         
@@ -191,18 +254,20 @@ class elmerWindowHandler():
         temp = mybuf.read().decode()
         mybuf.close()
         
-        self._elmerdefs = QtXml.QDomDocument()    
-        self._elmerdefs.setContent(temp)        
-        
+        self._elmerDefs = QtXml.QDomDocument()    
+        self._elmerDefs.setContent(temp)        
+        print("Fertig")
 
-#if __name__ == "__main__":
-#    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
-#    app = QtGui.QApplication(sys.argv)
-#    ewh = elmerWindowHandler()
-#    de = ewh.showAddEquation()
-#    de.show()
-#    #sp = ewh.showSolverParametersEditor()
-#    #sp.show()
-#    sys.exit(app.exec_())
+if __name__ == "__main__":
+    path = os.path.dirname(os.path.abspath(__file__))
+    path_forms = path + "\\forms\\"
+    path_edfs = path + "\\edf\\"
+    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
+    app = QtGui.QApplication(sys.argv)
+    ewh = elmerWindowHandler()
+    de = ewh.showAddEquation()
+    #sp = ewh.showSolverParametersEditor()
+    #sp.show()
+    sys.exit(app.exec_())
 
 
