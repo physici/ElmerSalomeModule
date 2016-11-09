@@ -67,7 +67,7 @@ def addEquation(context):
                                     "Functionality is only provided in mesh module.")
         return   
     
-    qwidget, equationName = main.showAddEquation()
+    qwidget = main.showAddEquation()
     qwidget.show()   
     
     
