@@ -19,6 +19,7 @@ from xml.etree import ElementTree as et
 import solverparameters
 import generalsetup
 import dynamiceditor
+import bodypropertyeditor
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + "\\forms\\"
@@ -31,6 +32,11 @@ class elmerWindowHandler():
     _equationEditor = []
     _materialEditor = []
     _solverParameterEditor = []
+    _bodyForceEditor = []
+    _initialConditionEditor = []
+    _boundaryConditionEditor = []
+    _boundaryPropertyEditor = []
+    _elementProperties = {}
     _elmerDefs = None
     _listview = None
     _window = None
@@ -45,6 +51,63 @@ class elmerWindowHandler():
                                         "Provides a handler to access ELMER configuration windows.\n" \
                                         "Requires ELMER, ELMERGUI and ELMER_HOME variable to be set.\n\n" \
                                         "Functionality provided only in Mesh-module.")
+        
+    def showBodyPropertyDefinition(self, objName):
+        """Dialog to define geometry properties\n
+        name = name of the element as provided in Salome Object Browser"""
+
+        be = bodypropertyeditor.BodyPropertyEditor(path_forms)
+        be.nameEdit.setText(objName)        
+        be.setWindowTitle("Body property for body {}".format(objName)) 
+        
+        #populate comboboxes
+        count = 1
+        be.equationCombo.addItem("", "Empty")
+        count += 1
+        for element in self._equationEditor:
+            name = str(element.nameEdit.text()).strip()
+            be.equationCombo.addItem(name, name)
+            count += 1
+        count = 1
+        be.materialCombo.addItem("", "Empty")
+        count += 1
+        for element in self._materialEditor:
+            name = str(element.nameEdit.text()).strip()
+            be.materialCombo.addItem(name, name)
+            count += 1
+        count = 1
+        be.bodyForceCombo.addItem("", "Empty")
+        count += 1
+        for element in self._materialEditor:
+            name = str(element.nameEdit.text()).strip()
+            be.bodyForceCombo.addItem(name, name)
+            count += 1
+        count = 1
+        be.initialConditionCombo.addItem("", "Empty")
+        count += 1
+        for element in self._materialEditor:
+            name = str(element.nameEdit.text()).strip()
+            be.initialConditionCombo.addItem(name, name)
+            count += 1
+
+         #check if element has properties already
+        if objName in self._elementProperties:
+            properties = self._elementProperties[objName]
+            be.equationCombo.setCurrentIndex(be.equationCombo.findText(properties.equation))
+            be.materialCombo.setCurrentIndex(be.materialCombo.findText(properties.material))
+            be.bodyForceCombo.setCurrentIndex(be.bodyForceCombo.findText(properties.force))
+            be.initialConditionCombo.setCurrentIndex(be.initialConditionCombo.findText(properties.initial))
+            
+        #connect to slot
+        be.bodyPropertyEditorApply.connect(self._bodyPropertyChanged)
+            
+        be.show()
+        self._window = be
+        return self._window
+        
+    def _bodyPropertyChanged(self, bodyPropertyEditor, name):
+        """Signal when body properties have changed"""
+        self._elementProperties.update({str(name): bodyPropertyEditor})
         
     def showGeneralSetup(self):
         """Initialize an instance of GeneralSetup and returns it to Salome"""
@@ -63,27 +126,28 @@ class elmerWindowHandler():
         self._window = QtGui.QWidget()
         layout = QtGui.QHBoxLayout()
         self._listview = QtGui.QListWidget()
-
         self._listview.clicked[QtCore.QModelIndex].connect(self._eqitemchanged)
-            
-        layout.addWidget(self._listview)
-                  
+        layout.addWidget(self._listview)               
         self._window.setLayout(layout)
           
+        #check if there are already some equations
         if len(self._equationEditor) == 0:
             self._pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
         else:
+            #populate list and reset signal slot
             for equation in self._equationEditor:
                 item = QtGui.QListWidgetItem()
                 item.setText(equation.nameEdit.text())
                 self._listview.addItem(item)
-                de = self._equationEditor[0]
-                layout.addWidget(de)
-                de.show()
-                self._window.setWindowTitle(de.nameEdit.text())
-
+                equation.dynamicEditorReady.disconnect()
+                equation.dynamicEditorReady[int, int].connect(self._pdeEditorFinishedSlot)  
+            #show first item
+            de = self._equationEditor[0]
+            layout.insertWidget(1, de)
+            self._window.setWindowTitle(de.nameEdit.text())        
+            de.show()
         self._window.show()
-        
+
         return self._window
         
     def showAddMaterial(self):
@@ -93,26 +157,27 @@ class elmerWindowHandler():
         self._window = QtGui.QWidget()
         layout = QtGui.QHBoxLayout()
         self._listview = QtGui.QListWidget()
-
-        self._listview.clicked[QtCore.QModelIndex].connect(self._matitemchanged)
-            
-        layout.addWidget(self._listview)
-            
+        self._listview.clicked[QtCore.QModelIndex].connect(self._matitemchanged)            
+        layout.addWidget(self._listview)          
         self._window.setWindowTitle("Material Library")
         self._window.setLayout(layout)
         
-        if len(self._equationEditor) == 0:
+        #check if there are already some materials
+        if len(self._materialEditor) == 0:
             self._matEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
         else:
+            #populate list and reset signal slot
             for mat in self._materialEditor:
                 item = QtGui.QListWidgetItem()
                 item.setText(mat.nameEdit.text())
                 self._listview.addItem(item)
-                de = self._equationEditor[0]
-                layout.addWidget(de)
-                de.show()
-                self._window.setWindowTitle(de.nameEdit.text())
-
+                mat.dynamicEditorReady.disconnect()
+                mat.dynamicEditorReady[int, int].connect(self._matEditorFinishedSlot) 
+            #show first material
+            de = self._materialEditor[0]
+            layout.insertWidget(1, de)
+            self._window.setWindowTitle(de.nameEdit.text())
+            de.show()           
         self._window.show()
         
         return self._window
@@ -124,7 +189,8 @@ class elmerWindowHandler():
         # delete second item == editor
         layout = self._window.layout()
         item = layout.takeAt(1)
-        item.widget().close()
+        if item:
+            item.widget().close()
         # insert the selected editor
         de = self._equationEditor[index.row()]
         layout.insertWidget(1, de)
@@ -169,6 +235,8 @@ class elmerWindowHandler():
                 item.setText(matName)
                 self._window.setWindowTitle(matName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    sys.stdout.write("close")
+                    sys.stdout.flush()
                     self._window.close()
                     
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
@@ -188,7 +256,6 @@ class elmerWindowHandler():
             de.spareButton.setText("Show Material Library")
             de.spareButton.show()
             de.dynamicEditorSpareButtonClicked[int, int].connect(self._showMaterialLibrary)
-            de.nameEdit.textChanged.connect(self._dynamicEditorNameChange)
                      
             #clear right side of layout and at the new dynamic editor
             item = layout.takeAt(1)
@@ -220,6 +287,7 @@ class elmerWindowHandler():
             else:
                 #remove the current equation                
                 del self._materialEditor[ids]
+                self._materialEditor = []
                 self._window.close()                
        
        
@@ -230,8 +298,7 @@ class elmerWindowHandler():
         """Method for handling the button events in the solver settings\n
         signal = the button hit\n
         ids = ID of the equation set"""
-        listview = self._listview
-        
+        listview = self._listview     
         signalOK = False
         if(signal == dynamiceditor.MatTypes.MAT_OK or
             signal == dynamiceditor.MatTypes.MAT_APPLY):
@@ -269,7 +336,6 @@ class elmerWindowHandler():
             de.spareButton.setText("Edit Solver Settings")
             de.spareButton.show()
             de.dynamicEditorSpareButtonClicked[int, int].connect(self._editNumericalMethods)
-            de.nameEdit.textChanged.connect(self._dynamicEditorNameChange)
                      
             #clear right side of layout and at the new dynamic editor
             item = layout.takeAt(1)
@@ -302,6 +368,7 @@ class elmerWindowHandler():
             else:
                 #remove the current equation                
                 del self._equationEditor[ids]
+                self._equationEditor = []
                 self._window.close()                
             
 
@@ -340,12 +407,7 @@ class elmerWindowHandler():
                 break
         
         spe.show()
-            
-          
-    def _dynamicEditorNameChange(self, t):
-        """ToDo"""
-        return
-               
+                           
     def _xmlMerge(self, path):
         """Merges all edf-xml files in the given directory into a temporary file\n
         returns the temporary file object with the cursor at the beginning"""
@@ -379,7 +441,10 @@ if __name__ == "__main__":
     sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
     app = QtGui.QApplication(sys.argv)
     ewh = elmerWindowHandler()
-    de = ewh.showAddMaterial()
+#    be = ewh.showBodyPropertyDefinition("teset")
+    ewh.showAddEquation()    
+    ewh._window.close()
+    ewh.showAddEquation()
     #sp = ewh.showSolverParametersEditor()
     #sp.show()
     sys.exit(app.exec_())

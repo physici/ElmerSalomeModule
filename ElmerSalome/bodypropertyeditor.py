@@ -14,7 +14,11 @@ from PyQt4 import uic
 import elmer_window_handler
 
 
-class BodyPropertyEditor(QtCore.QtDialog):
+class BodyPropertyEditor(QtGui.QDialog):
+    
+    #signal changed
+    bodyPropertyEditorApply = QtCore.pyqtSignal(QtGui.QDialog, str,
+                                                name="bodyPropertyEditorApply")
     
     def __init__(self, path_forms):
         """Constructor"""
@@ -26,49 +30,34 @@ class BodyPropertyEditor(QtCore.QtDialog):
         self.initial = None
         self.force = None
         self.equation = None
-        self.touched = False
-        
+
         #signals
         self.applyButton.clicked.connect(self._applySlot)
         self.discardButton.clicked.connect(self._discardSlot)
         self.materialCombo.currentIndexChanged.connect(self.materialComboChanged)
-        self.initialConditionCombo.currentIndexChanged.connect(self.initialConditionCombo)        
-        self.bodyForceCombo.currentIndexChanged.connect(self.bodyForceCombo)        
-        self.equationCombo.currentIndexChanged.connect(self.equationCombo)  
+        self.initialConditionCombo.currentIndexChanged.connect(self.initialComboChanged)        
+        self.bodyForceCombo.currentIndexChanged.connect(self.forceComboChanged)        
+        self.equationCombo.currentIndexChanged.connect(self.equationComboChanged)  
         
     def _applySlot(self):
-        self.touched = True
+        self.bodyPropertyEditorApply.emit(self, str(self.nameEdit.text()))
         self.close()
         
     def _discardSlot(self):
-        self.touched = False
         self.close()
         
     def materialComboChanged(self, select):
-        """ToDo"""
-        return
+        self.material = self.materialCombo.itemData(select)
+        
         
     def initialComboChanged(self, select):
-        """ToDo"""
-        return
+        self.initial = self.initialConditionCombo.itemData(select)
         
     def forceComboChanged(self, select):
-        """ToDo"""
-        return
+        self.force = self.bodyForceCombo.itemData(select)
         
     def equationComboChanged(self, select):
-        """ToDo"""
-        return
-        
-    def appendToProject(self):
-        """ToDo"""        
-        return
-    
-    def readFromProject(self):
-        """ToDo"""
-        return
-        
-    
+        self.equation = self.equationCombo.itemData(select)
         
         
         
