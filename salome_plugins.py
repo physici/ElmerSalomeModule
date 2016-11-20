@@ -9,7 +9,7 @@ Salome Plugin-manager file for declaration of Elmer functionality to Salome
 
 from PyQt4 import QtGui
 
-import salome_pluginsmanager
+import salome_pluginsmanager as sp
 import sys
 import os
 
@@ -32,7 +32,7 @@ import elmer_window_handler as ewh
 #required to keep reference to all created widgets, will be overwritten everytime
 qwidget = QtGui.QWidget()
 
-main = ewh.elmerWindowHanlder()
+main = ewh.elmerWindowHandler()
 
 #define about Function
 def about(context):
@@ -43,8 +43,8 @@ def about(context):
         QtGui.QMessageBox.about(None, str(active_module),
                                     "Functionality is only provided in mesh module.")
         return
-    qwidget = main.about()
-
+    return
+    
 #define generalSetup function
 def generalSetup(context):
     global main, qwidget
@@ -54,10 +54,9 @@ def generalSetup(context):
         QtGui.QMessageBox.about(None, str(active_module),
                                     "Functionality is only provided in mesh module.")
         return
-    qwidget = main.showGeneralSetup()
-    qwidget.show()
+    main.showGeneralSetup()
     
-def addEquation(context):
+def showEquations(context):
     """Make a new equation sub-menu and call the dynamic editor"""
     global main, qwidget
      #get active module and check if SMESH
@@ -67,11 +66,48 @@ def addEquation(context):
                                     "Functionality is only provided in mesh module.")
         return   
     
-    qwidget, equationName = main.showAddEquation()
-    qwidget.show()   
+    main.showAddEquation()
+    
+def showMaterials(context):
+    """Make a new material sub-menu and call the dynamic editor"""
+    global main, qwidget
+     #get active module and check if SMESH
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.about(None, str(active_module),
+                                    "Functionality is only provided in mesh module.")
+        return   
+    
+    main.showAddMaterial()      
+    
+def defineBodyProperties(context):
+    """Open dialog to set body properties"""
+    global main, qwidget, sp
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.about(None, str(active_module),
+                                    "Functionality is only provided in mesh module.")
+        return   
+    
+    #chech shape, should be solid/body
+    objID = sp.sg.getSelected(0)
+    salomeObj = sp.salome.myStudy.FindObjectID(objID)
+    parentGroupCategory = salomeObj.GetFather().GetName()
+    if "Volumes"  in parentGroupCategory:
+        main.showBodyPropertyDefinition(salomeObj.GetName())
+        return
+    if "Faces" in parentGroupCategory:
+        main.showBoundaryPropertyDefinition(salomeObj.GetName())
+        return
+    else:
+        mes =  "Invalid selection. Check selection."
+        QtGui.QMessageBox.about(None, str(active_module), mes)
+        return      
+    
     
     
 #declare ShowWindow-Function to plugin manager
-salome_pluginsmanager.AddFunction('ELMER/About', 'About ELMER plugin', about)
-salome_pluginsmanager.AddFunction('ELMER/General Setup', 'General setup of Elmer', generalSetup)
-salome_pluginsmanager.AddFunction('ELMER/Equation/Add', 'Add new equation', addEquation)
+sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
+sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
+sp.AddFunction('ELMER/Materials', 'Materials', showMaterials)
+#sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineBodyProperties)
