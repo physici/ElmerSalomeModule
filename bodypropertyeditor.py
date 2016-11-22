@@ -13,7 +13,7 @@ from PyQt4 import uic
 
 class BodyPropertyEditor(QtGui.QDialog):
     """BodyPropertyEditor base class"""
-    
+
     # signal
     bodyPropertyEditorApply = QtCore.pyqtSignal(QtGui.QDialog, str,
                                                 name="bodyPropertyEditorApply")
@@ -36,9 +36,9 @@ class BodyPropertyEditor(QtGui.QDialog):
         self.applyButton.clicked.connect(self._applySlot)
         self.discardButton.clicked.connect(self._discardSlot)
         self.materialCombo.currentIndexChanged.connect(self.materialComboChanged)
-        self.initialConditionCombo.currentIndexChanged.connect(self.initialComboChanged)        
-        self.bodyForceCombo.currentIndexChanged.connect(self.forceComboChanged)        
-        self.equationCombo.currentIndexChanged.connect(self.equationComboChanged)  
+        self.initialConditionCombo.currentIndexChanged.connect(self.initialComboChanged)
+        self.bodyForceCombo.currentIndexChanged.connect(self.forceComboChanged)
+        self.equationCombo.currentIndexChanged.connect(self.equationComboChanged)
 
     def _applySlot(self):
         self.bodyPropertyEditorApply.emit(self, str(self.nameEdit.text()))

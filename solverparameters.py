@@ -42,7 +42,7 @@ class SovlerParameterEditor(QtGui.QDialog):
         return
 
     def _hypreStateChanged(self, integer):
-        if(self.useHypre.isChecked()):
+        if self.useHypre.isChecked():
             self.parasailsGroup.setEnabled(True)
             self.boomerAMGGroup.setEnabled(True)
         else:
@@ -50,13 +50,13 @@ class SovlerParameterEditor(QtGui.QDialog):
             self.boomerAMGGroup.setEnabled(False)
 
     def _parasailsStateChanged(self):
-        if(self.useParasails.isChecked()):
+        if self.useParasails.isChecked():
             self.boomerAMGGroup.setEnabled(True)
         else:
             self.boomerAMGGroup.setEnabled(True)
 
     def _boomerAMGStateChanged(self):
-        if(self.useBoomerAMG.isChecked()):
+        if self.useBoomerAMG.isChecked():
             self.parasailsGroup.setEnabled(True)
         else:
             self.parasailsGroup.setEnabled(True)
