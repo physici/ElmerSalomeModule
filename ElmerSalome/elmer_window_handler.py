@@ -22,8 +22,8 @@ import dynamiceditor
 import bodypropertyeditor
 
 path = os.path.dirname(os.path.abspath(__file__))
-path_forms = path + "\\forms\\"
-path_edfs = path + "\\edf\\"
+path_forms = path + os.sep + "forms" + os.sep
+path_edfs = path + os.sep + "edf" + os.sep
 
 main = None
 
@@ -116,7 +116,7 @@ class elmerWindowHandler():
 
     def showSolverParametersEditor(self):
         """Initialize an instance of Solver Param Editor and returns it to Salome"""
-        sp = solverparameters.SovlerParameterEditor(path_forms)
+        sp = solverparameters.SolverParameterEditor(path_forms)
         return sp
         
     def showAddEquation(self):
@@ -388,7 +388,7 @@ class elmerWindowHandler():
             return
             
         if(current >= len(self._solverParameterEditor)):
-            self._solverParameterEditor.append(solverparameters.SovlerParameterEditor(path_forms))
+            self._solverParameterEditor.append(solverparameters.SolverParameterEditor(path_forms))
 
         spe = self._solverParameterEditor[current]
         spe.setWindowTitle("Solver control for {}".format(title))
@@ -435,9 +435,10 @@ class elmerWindowHandler():
         #print("Fertig")
 
 if __name__ == "__main__":
+    print("Elmer Window Handler starting...")
     path = os.path.dirname(os.path.abspath(__file__))
-    path_forms = path + "\\forms\\"
-    path_edfs = path + "\\edf\\"
+    path_forms = path + os.sep + "forms" +  os.sep
+    path_edfs = path + os.sep + "edf" + os.sep
     sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
     app = QtGui.QApplication(sys.argv)
     ewh = elmerWindowHandler()
