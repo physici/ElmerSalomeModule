@@ -137,7 +137,6 @@ class DynamicEditor(QtGui.QWidget):
         self._section = None
         self._param = None
      
-
    
     def setupTabs(self, elmerDefs , Section, ID):
         """Creates the taps of the dynamic widget according to the elmerDefs"""

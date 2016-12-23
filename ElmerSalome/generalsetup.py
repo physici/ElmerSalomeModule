@@ -16,7 +16,7 @@ class GeneralSetup(QtGui.QDialog):
     def __init__(self, path_forms):
         """Constructor of dialog using the uic-loader"""
         super(GeneralSetup, self).__init__()
-        uic.loadUi(path_forms + "\\generalsetup.ui", self)
+        uic.loadUi(path_forms + "generalsetup.ui", self)
         self.acceptButton.clicked.connect(self.applyChanges)
         
     def applyChanges(self):

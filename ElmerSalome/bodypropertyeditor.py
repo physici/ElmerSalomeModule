@@ -34,10 +34,10 @@ class BodyPropertyEditor(QtGui.QDialog):
         #signals
         self.applyButton.clicked.connect(self._applySlot)
         self.discardButton.clicked.connect(self._discardSlot)
-        self.materialCombo.currentIndexChanged.connect(self.materialComboChanged)
-        self.initialConditionCombo.currentIndexChanged.connect(self.initialComboChanged)        
-        self.bodyForceCombo.currentIndexChanged.connect(self.forceComboChanged)        
-        self.equationCombo.currentIndexChanged.connect(self.equationComboChanged)  
+        self.materialCombo.currentIndexChanged.connect(self._materialComboChanged)
+        self.initialConditionCombo.currentIndexChanged.connect(self._initialComboChanged)        
+        self.bodyForceCombo.currentIndexChanged.connect(self._forceComboChanged)        
+        self.equationCombo.currentIndexChanged.connect(self._equationComboChanged)  
         
     def _applySlot(self):
         self.bodyPropertyEditorApply.emit(self, str(self.nameEdit.text()))
@@ -46,18 +46,18 @@ class BodyPropertyEditor(QtGui.QDialog):
     def _discardSlot(self):
         self.close()
         
-    def materialComboChanged(self, select):
-        self.material = self.materialCombo.itemData(select)
+    def _materialComboChanged(self, select):
+        self.material = self.materialCombo.itemText(select)
         
         
-    def initialComboChanged(self, select):
-        self.initial = self.initialConditionCombo.itemData(select)
+    def _initialComboChanged(self, select):
+        self.initial = self.initialConditionCombo.itemText(select)
         
-    def forceComboChanged(self, select):
-        self.force = self.bodyForceCombo.itemData(select)
+    def _forceComboChanged(self, select):
+        self.force = self.bodyForceCombo.itemText(select)
         
-    def equationComboChanged(self, select):
-        self.equation = self.equationCombo.itemData(select)
+    def _equationComboChanged(self, select):
+        self.equation = self.equationCombo.itemText(select)
         
         
         

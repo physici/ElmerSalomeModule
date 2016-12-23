@@ -20,10 +20,11 @@ import solverparameters
 import generalsetup
 import dynamiceditor
 import bodypropertyeditor
+import boundarypropertyeditor
 
 path = os.path.dirname(os.path.abspath(__file__))
-path_forms = path + "\\forms\\"
-path_edfs = path + "\\edf\\"
+path_forms = path + os.sep + "forms" + os.sep
+path_edfs = path + os.sep + "edf" + os.sep
 
 main = None
 
@@ -35,7 +36,6 @@ class elmerWindowHandler():
     _bodyForceEditor = []
     _initialConditionEditor = []
     _boundaryConditionEditor = []
-    _boundaryPropertyEditor = []
     _elementProperties = {}
     _elmerDefs = None
     _listview = None
@@ -51,6 +51,39 @@ class elmerWindowHandler():
                                         "Provides a handler to access ELMER configuration windows.\n" \
                                         "Requires ELMER, ELMERGUI and ELMER_HOME variable to be set.\n\n" \
                                         "Functionality provided only in Mesh-module.")
+
+    def showBoundaryPropertyDefinition(self, objName):
+        """Dialog to define geometry properties\n
+        name = name of the element as provided in Salome Object Browser"""
+
+        be = boundarypropertyeditor.BoundaryPropertyEditor(path_forms)
+        be.objName = objName
+        be.setWindowTitle("Boundary property for boundary {}".format(objName)) 
+        
+        #populate comboboxes
+        count = 1
+        be.boundaryConditionCombo.addItem("", "Empty")
+        count += 1
+        for element in self._boundaryConditionEditor:
+            name = str(element.nameEdit.text()).strip()
+            be.boundaryConditionCombo.addItem(name, name)
+            count += 1
+        count = 1
+
+        # check if element has properties already
+        if objName in self._elementProperties:        
+            properties = self._elementProperties[objName]
+            be.boundaryConditionCombo.setCurrentIndex(be.boundaryConditionCombo.findText(properties.boundaryProperties))
+            be.boundaryAsABody.setCheckState(properties.bodyCondition)
+
+            
+        #connect to slot
+        be.boundaryPropertyEditorApply.connect(self._boundaryPropertyChanged)
+            
+        be.show()
+        self._window = be
+        return self._window
+
         
     def showBodyPropertyDefinition(self, objName):
         """Dialog to define geometry properties\n
@@ -78,20 +111,20 @@ class elmerWindowHandler():
         count = 1
         be.bodyForceCombo.addItem("", "Empty")
         count += 1
-        for element in self._materialEditor:
+        for element in self._bodyForceEditor:
             name = str(element.nameEdit.text()).strip()
             be.bodyForceCombo.addItem(name, name)
             count += 1
         count = 1
         be.initialConditionCombo.addItem("", "Empty")
         count += 1
-        for element in self._materialEditor:
+        for element in self._initialConditionEditor:
             name = str(element.nameEdit.text()).strip()
             be.initialConditionCombo.addItem(name, name)
             count += 1
 
-         #check if element has properties already
-        if objName in self._elementProperties:
+        # check if element has properties already
+        if objName in self._elementProperties:        
             properties = self._elementProperties[objName]
             be.equationCombo.setCurrentIndex(be.equationCombo.findText(properties.equation))
             be.materialCombo.setCurrentIndex(be.materialCombo.findText(properties.material))
@@ -105,10 +138,6 @@ class elmerWindowHandler():
         self._window = be
         return self._window
         
-    def _bodyPropertyChanged(self, bodyPropertyEditor, name):
-        """Signal when body properties have changed"""
-        self._elementProperties.update({str(name): bodyPropertyEditor})
-        
     def showGeneralSetup(self):
         """Initialize an instance of GeneralSetup and returns it to Salome"""
         ge = generalsetup.GeneralSetup(path_forms)
@@ -116,7 +145,7 @@ class elmerWindowHandler():
 
     def showSolverParametersEditor(self):
         """Initialize an instance of Solver Param Editor and returns it to Salome"""
-        sp = solverparameters.SovlerParameterEditor(path_forms)
+        sp = solverparameters.SolverParameterEditor(path_forms)
         return sp
         
     def showAddEquation(self):
@@ -181,7 +210,16 @@ class elmerWindowHandler():
         self._window.show()
         
         return self._window
+
+    def _boundaryPropertyChanged(self, boundaryPropertyEditor, name):
+        """Signal when body properties have changed"""
+        self._elementProperties.update({str(name): boundaryPropertyEditor})
+
         
+    def _bodyPropertyChanged(self, bodyPropertyEditor, name):
+        """Signal when body properties have changed"""
+        self._elementProperties.update({str(name): bodyPropertyEditor})
+       
 
     def _eqitemchanged(self, index):
         """Method for changing the selected item in the equation editor view"""
@@ -193,8 +231,9 @@ class elmerWindowHandler():
             item.widget().close()
         # insert the selected editor
         de = self._equationEditor[index.row()]
-        layout.insertWidget(1, de)
         de.show()
+        layout.insertWidget(1, de)
+        
         self._window.setWindowTitle(de.nameEdit.text())     
   
         
@@ -235,8 +274,6 @@ class elmerWindowHandler():
                 item.setText(matName)
                 self._window.setWindowTitle(matName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
-                    sys.stdout.write("close")
-                    sys.stdout.flush()
                     self._window.close()
                     
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
@@ -388,7 +425,7 @@ class elmerWindowHandler():
             return
             
         if(current >= len(self._solverParameterEditor)):
-            self._solverParameterEditor.append(solverparameters.SovlerParameterEditor(path_forms))
+            self._solverParameterEditor.append(solverparameters.SolverParameterEditor(path_forms))
 
         spe = self._solverParameterEditor[current]
         spe.setWindowTitle("Solver control for {}".format(title))
@@ -436,15 +473,12 @@ class elmerWindowHandler():
 
 if __name__ == "__main__":
     path = os.path.dirname(os.path.abspath(__file__))
-    path_forms = path + "\\forms\\"
-    path_edfs = path + "\\edf\\"
+    path_forms = path + os.sep + "forms" +  os.sep
+    path_edfs = path + os.sep + "edf" + os.sep
     sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
     app = QtGui.QApplication(sys.argv)
     ewh = elmerWindowHandler()
-#    be = ewh.showBodyPropertyDefinition("teset")
-    ewh.showAddEquation()    
-    ewh._window.close()
-    ewh.showAddEquation()
+    sp = ewh.showAddEquation()    
     #sp = ewh.showSolverParametersEditor()
     #sp.show()
     sys.exit(app.exec_())
