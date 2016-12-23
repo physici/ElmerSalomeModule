@@ -27,87 +27,95 @@ if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
     print(plugin_path + os.sep + "elmer_window_handler.py" + " not found")
     sys.exit("No Elmer module found")
 
-#import window handler
+# import window handler
 import elmer_window_handler as ewh
 
-#required to keep reference to all created widgets, will be overwritten everytime
+# required to keep reference to all created widgets
+# will be overwritten everytime
 qwidget = QtGui.QWidget()
 
 main = ewh.elmerWindowHandler()
 
-#define about Function
+
+# define about Function
 def about(context):
     global main, qwidget
-    #get active module and check if SMESH
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
-                                    "Functionality is only provided in mesh module.")
+                                "Functionality is only provided in mesh module.")
         return
+
     return
-    
-#define generalSetup function
+
+
+# define generalSetup function
 def generalSetup(context):
     global main, qwidget
-    #get active module and check if SMESH
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
-                                    "Functionality is only provided in mesh module.")
+                                "Functionality is only provided in mesh module.")
         return
+
     main.showGeneralSetup()
-    
+
+
 def showEquations(context):
     """Make a new equation sub-menu and call the dynamic editor"""
     global main, qwidget
-     #get active module and check if SMESH
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
-                                    "Functionality is only provided in mesh module.")
-        return   
-    
+                                "Functionality is only provided in mesh module.")
+        return
+
     main.showAddEquation()
-    
+
+
 def showMaterials(context):
     """Make a new material sub-menu and call the dynamic editor"""
     global main, qwidget
-     #get active module and check if SMESH
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
-                                    "Functionality is only provided in mesh module.")
-        return   
-    
-    main.showAddMaterial()      
-    
+                                "Functionality is only provided in mesh module.")
+        return
+
+    main.showAddMaterial()
+
+
 def defineBodyProperties(context):
     """Open dialog to set body properties"""
     global main, qwidget, sp
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.about(None, str(active_module),
-                                    "Functionality is only provided in mesh module.")
-        return   
-    
-    #chech shape, should be solid/body
+                                "Functionality is only provided in mesh module.")
+        return
+
+    # chech shape, should be solid/body
     objID = sp.sg.getSelected(0)
     salomeObj = sp.salome.myStudy.FindObjectID(objID)
     parentGroupCategory = salomeObj.GetFather().GetName()
-    if "Volumes"  in parentGroupCategory:
+    if "Volumes" in parentGroupCategory:
         main.showBodyPropertyDefinition(salomeObj.GetName())
         return
     if "Faces" in parentGroupCategory:
         main.showBoundaryPropertyDefinition(salomeObj.GetName())
         return
     else:
-        mes =  "Invalid selection. Check selection."
+        mes = "Invalid selection. Check selection."
         QtGui.QMessageBox.about(None, str(active_module), mes)
-        return      
-    
-    
-    
-#declare ShowWindow-Function to plugin manager
+        return
+
+
+# declare ShowWindow-Function to plugin manager
 sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
 sp.AddFunction('ELMER/General', 'General Setup', generalSetup)
 sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
