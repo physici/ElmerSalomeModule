@@ -16,14 +16,15 @@ import os
 plugin_path = ""
 #add SALOME_PLUGIN_PATH to Python environment for easier module import
 if (os.environ.get("SALOME_PLUGINS_PATH") != None):
-    plugin_path =  os.environ.get("SALOME_PLUGINS_PATH") + "\\ElmerSalome"
-else:
+    plugin_path =  os.environ.get("SALOME_PLUGINS_PATH") + os.sep + "ElmerSalome"
+if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
     import inspect
-    plugin_path = os.path.dirname(inspect.getfile(inspect.currentframe()))  + "\\ElmerSalome"
+    plugin_path = os.path.dirname(inspect.getfile(inspect.currentframe()))  + os.sep + "ElmerSalome"
 
 sys.path.append(plugin_path)
 
-if not (os.path.exists("{}\\elmer_window_handler.py".format(plugin_path))):
+if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
+    print(plugin_path + os.sep + "elmer_window_handler.py" + " not found")
     sys.exit("No Elmer module found")
 
 #import window handler
@@ -108,6 +109,7 @@ def defineBodyProperties(context):
     
 #declare ShowWindow-Function to plugin manager
 sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
+sp.AddFunction('ELMER/General', 'General Setup', generalSetup)
 sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
 sp.AddFunction('ELMER/Materials', 'Materials', showMaterials)
-#sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineBodyProperties)
+sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineBodyProperties)
