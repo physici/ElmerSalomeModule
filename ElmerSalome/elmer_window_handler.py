@@ -496,6 +496,7 @@ class elmerWindowHandler():
         #print("Fertig")
 
 if __name__ == "__main__":
+    print("Elmer Window Handler starting...")
     path = os.path.dirname(os.path.abspath(__file__))
     path_forms = path + os.sep + "forms" +  os.sep
     path_edfs = path + os.sep + "edf" + os.sep
