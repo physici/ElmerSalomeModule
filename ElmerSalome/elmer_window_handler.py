@@ -163,9 +163,7 @@ class elmerWindowHandler():
             self._listview.clicked[QtCore.QModelIndex].connect(self._eqitemchanged)
             layout.addWidget(self._listview)               
             self._eqWindow.setLayout(layout)
-
-            self._pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
-            
+            self._pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)            
             self._eqWindow.show()
         else:
             self._eqWindow.show()
@@ -184,23 +182,7 @@ class elmerWindowHandler():
             layout.addWidget(self._listview)          
             self._matWindow.setWindowTitle("Material Library")
             self._matWindow.setLayout(layout)
-            
-            #check if there are already some materials
-            if len(self._materialEditor) == 0:
-                self._matEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
-            else:
-                #populate list and reset signal slot
-                for mat in self._materialEditor:
-                    item = QtGui.QListWidgetItem()
-                    item.setText(mat.nameEdit.text())
-                    self._listview.addItem(item)
-                    mat.dynamicEditorReady.disconnect()
-                    mat.dynamicEditorReady[int, int].connect(self._matEditorFinishedSlot) 
-                #show first material
-                de = self._materialEditor[0]
-                layout.insertWidget(1, de)
-                self._matWindow.setWindowTitle(de.nameEdit.text())
-                de.show()           
+            self._matEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
             self._matWindow.show()
         else:
             self._matWindow.show()
