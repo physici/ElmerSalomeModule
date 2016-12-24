@@ -10,6 +10,3 @@ Plugin for SALOME platform to access Elmer functionality
 * copy ElmerSalome-directory into the plugin directory
 * copy the salome_plugins.py-file in the plugin directory or modify the existing file 
 * register the directory via the SALOME_PLUGIN_PATH system variable
-  
-##ToDo:
-*  check whether registration via system variables can be bypassed by using the env.bat batch file that starts SALOME
