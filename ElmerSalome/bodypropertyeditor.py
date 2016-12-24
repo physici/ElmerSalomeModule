@@ -15,50 +15,45 @@ import elmer_window_handler
 
 
 class BodyPropertyEditor(QtGui.QDialog):
-    
-    #signal changed
+
+    # signal changed
     bodyPropertyEditorApply = QtCore.pyqtSignal(QtGui.QDialog, str,
                                                 name="bodyPropertyEditorApply")
-    
+
     def __init__(self, path_forms):
         """Constructor"""
         super(BodyPropertyEditor, self).__init__()
-    
+
         uic.loadUi(path_forms + "bodypropertyeditor.ui", self)
-        
+
         self.material = None
         self.initial = None
         self.force = None
         self.equation = None
 
-        #signals
+        # signals
         self.applyButton.clicked.connect(self._applySlot)
         self.discardButton.clicked.connect(self._discardSlot)
         self.materialCombo.currentIndexChanged.connect(self._materialComboChanged)
-        self.initialConditionCombo.currentIndexChanged.connect(self._initialComboChanged)        
-        self.bodyForceCombo.currentIndexChanged.connect(self._forceComboChanged)        
-        self.equationCombo.currentIndexChanged.connect(self._equationComboChanged)  
-        
+        self.initialConditionCombo.currentIndexChanged.connect(self._initialComboChanged)
+        self.bodyForceCombo.currentIndexChanged.connect(self._forceComboChanged)
+        self.equationCombo.currentIndexChanged.connect(self._equationComboChanged)
+
     def _applySlot(self):
         self.bodyPropertyEditorApply.emit(self, str(self.nameEdit.text()))
         self.close()
-        
+
     def _discardSlot(self):
         self.close()
-        
+
     def _materialComboChanged(self, select):
         self.material = self.materialCombo.itemText(select)
-        
-        
+
     def _initialComboChanged(self, select):
         self.initial = self.initialConditionCombo.itemText(select)
-        
+
     def _forceComboChanged(self, select):
         self.force = self.bodyForceCombo.itemText(select)
-        
+
     def _equationComboChanged(self, select):
         self.equation = self.equationCombo.itemText(select)
-        
-        
-        
-
