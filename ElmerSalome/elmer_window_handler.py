@@ -22,6 +22,7 @@ import generalsetup
 import dynamiceditor
 import bodypropertyeditor
 import boundarypropertyeditor
+import materiallibrary
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + os.sep + "forms" + os.sep
@@ -32,28 +33,31 @@ main = None
 
 class elmerWindowHandler():
 
-    _equationEditor = []
-    _materialEditor = []
-    _solverParameterEditor = []
-    _bodyForceEditor = []
-    _initialConditionEditor = []
-    _boundaryConditionEditor = []
-    _elementProperties = {}
-    _elmerDefs = None
-    _listview = None
-    _window = None
-    _eqWindow = None
-    _matWindow = None
-    _bfWindow = None
-    _bcWindow = None
-    _icWindow = None
-    _matCurrent = 0
-    _eqCurrent = 0
-    _bfCurrent = 0
-    _bcCurrent = 0
-    _icCurrent = 0
-
     def __init__(self):
+        """Constructor"""
+        # private fields
+        self._equationEditor = []
+        self._materialEditor = []
+        self._solverParameterEditor = []
+        self._bodyForceEditor = []
+        self._initialConditionEditor = []
+        self._boundaryConditionEditor = []
+        self._elementProperties = {}
+        self._materialLibrary = materiallibrary.MaterialLibrary(path_forms, path_edfs)
+        self._elmerDefs = None
+        self._listview = None
+        self._window = None
+        self._eqWindow = None
+        self._matWindow = None
+        self._bfWindow = None
+        self._bcWindow = None
+        self._icWindow = None
+        self._matCurrent = 0
+        self._eqCurrent = 0
+        self._bfCurrent = 0
+        self._bcCurrent = 0
+        self._icCurrent = 0
+        
         self._xmlMerge(path_edfs)
         self._parent = self
 
@@ -317,7 +321,7 @@ class elmerWindowHandler():
         layout.insertWidget(1, de, stretch=5)
         de.show()
         self._bcWindow.setWindowTitle(de.nameEdit.text())
-    
+
     def _bodyForceEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the body force settings\n
         signal = the button hit\n
@@ -747,7 +751,11 @@ class elmerWindowHandler():
                 self._eqWindow.hide()
 
     def _showMaterialLibrary(self, current, ids):
-        return
+        """Opens the material library and connects it to the currently
+        active material"""
+        self._materialLibrary.editor = self._materialEditor[ids]
+        self._materialLibrary.elmerDefs = self._elmerDefs
+        self._materialLibrary.show()
 
     def _editNumericalMethods(self, current, ids):
         """Edit the solver specific properties\n

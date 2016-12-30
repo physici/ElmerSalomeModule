@@ -9,10 +9,12 @@ from PyQt4 import uic
 class MaterialLibrary(QtGui.QDialog):
     """Material library"""
 
-    def __init(self, path_forms, path_edfs):
+    def __init__(self, path_forms, path_edfs):
         """Constructor
 
-        :path_edfs: path to the xml-files directory"""
+        :path_forms: path to ui-interface directory
+        :path_edfs: path to the xml-files directory
+        """
         super(MaterialLibrary, self).__init__()
 
         # public
@@ -20,22 +22,22 @@ class MaterialLibrary(QtGui.QDialog):
         self.elmerDefs = None
 
         # privat
-        self._materialDoc = QtXml.QDomElement()
+        self._materialDoc = QtXml.QDomDocument()
 
         uic.loadUi(path_forms + "materiallibrary.ui", self)
 
         # connect buttons
-        self._okButton.clicked.connect(self._okButtonClicked)
-        self._appendButton.clicked.connect(self._appendButtonClicked)
-        self._clearButton.clicked.connect(self._clearButtonClicked)
-        self._closeButton.clicked.connect(self._closeButtonClicked)
+        self.okButton.clicked.connect(self._okButtonClicked)
+        self.appendButton.clicked.connect(self._appendButtonClicked)
+        self.clearButton.clicked.connect(self._clearButtonClicked)
+        self.closeButton.clicked.connect(self._closeButtonClicked)
 
         # load material library
         matFileName = path_edfs + "egmaterials.xml"
         matlist = self.materialListWidget
         matlist.clear()
 
-        self.appendDocument(matFileName)
+        self._appendDocument(matFileName)
 
         self.materialListWidget.itemDoubleClicked.connect(self._itemDoubleClicked)
 
@@ -64,13 +66,14 @@ class MaterialLibrary(QtGui.QDialog):
             materialName = str(material.attribute("name"))
 
             if(materialName != item.text()):
+                material = material.nextSiblingElement()
                 continue
 
             editor.nameEdit.setText(materialName)
             prop = material.firstChildElement()
             while(prop.isNull() is False):
                 propertyName = str(prop.attribute("name")).strip().lower()
-                propertyValue = str(prop.text()).stri()
+                propertyValue = str(prop.text()).strip()
 
                 match = False
 
@@ -108,7 +111,7 @@ class MaterialLibrary(QtGui.QDialog):
         """AppendButton clicked"""
         matFileName = QtGui.QFileDialog.getOpenFileName(self)
 
-        if(matFileName.isEmpty()):
+        if(matFileName == ""):
             return
 
         self._materialDoc = QtXml.QDomElement()
@@ -136,7 +139,8 @@ class MaterialLibrary(QtGui.QDialog):
                                           "Material library does not exist")
             return
         else:
-            if(not self._materialDoc.setContent(materialFile, True, errStr, errRow, errCol)):
+            statusOK, errStr, errRow, errCol = self._materialDoc.setContent(materialFile, True)
+            if(not statusOK):
                 QtGui.QMessageBox.information(None, "Material loader",
                                               "Parse error at line {}, col {}:\n{}".format(errRow, errCol, errStr))
                 materialFile.close()
