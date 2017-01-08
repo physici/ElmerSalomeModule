@@ -22,6 +22,7 @@ import generalsetup
 import dynamiceditor
 import bodypropertyeditor
 import boundarypropertyeditor
+import materiallibrary
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + os.sep + "forms" + os.sep
@@ -32,26 +33,31 @@ main = None
 
 class elmerWindowHandler():
 
-    _equationEditor = []
-    _materialEditor = []
-    _solverParameterEditor = []
-    _bodyForceEditor = []
-    _initialConditionEditor = []
-    _boundaryConditionEditor = []
-    _elementProperties = {}
-    _elmerDefs = None
-    _listview = None
-    _window = None
-    _eqWindow = None
-    _matWindow = None
-    _bfWindow = None
-    _icWindow = None
-    _matCurrent = 0
-    _eqCurrent = 0
-    _bfCurrent = 0
-    _icCurrent = 0
-
     def __init__(self):
+        """Constructor"""
+        # private fields
+        self._equationEditor = []
+        self._materialEditor = []
+        self._solverParameterEditor = []
+        self._bodyForceEditor = []
+        self._initialConditionEditor = []
+        self._boundaryConditionEditor = []
+        self._elementProperties = {}
+        self._materialLibrary = materiallibrary.MaterialLibrary(path_forms, path_edfs)
+        self._elmerDefs = None
+        self._listview = None
+        self._window = None
+        self._eqWindow = None
+        self._matWindow = None
+        self._bfWindow = None
+        self._bcWindow = None
+        self._icWindow = None
+        self._gsWindow = None
+        self._matCurrent = 0
+        self._eqCurrent = 0
+        self._bfCurrent = 0
+        self._bcCurrent = 0
+        self._icCurrent = 0
         self._xmlMerge(path_edfs)
         self._parent = self
 
@@ -145,8 +151,14 @@ class elmerWindowHandler():
 
     def showGeneralSetup(self):
         """Initialize an instance of GeneralSetup and returns it to Salome"""
-        ge = generalsetup.GeneralSetup(path_forms)
-        return ge
+        if self._gsWindow is None:
+            ge = generalsetup.GeneralSetup(path_forms)
+            ge.show()
+            self._gsWindow = ge
+            return ge
+        else:
+            self._gsWindow.show()
+            return self._gsWindow
 
     def showSolverParametersEditor(self):
         """Initialize an instance of Solver Param Editor and returns it to Salome"""
@@ -226,7 +238,26 @@ class elmerWindowHandler():
         else:
             self._icWindow.show()
 
-        return self._bfWindow
+        return self._icWindow
+
+    def showAddBoundaryCondition(self):
+        """Creates a new instance of the dynamic editor for adding a boundary condition"""
+        if not self._bcWindow:
+            # create a horizontal split layout
+            self._bcWindow = QtGui.QWidget()
+            layout = QtGui.QHBoxLayout()
+            self._listview = QtGui.QListWidget()
+            self._listview.clicked[QtCore.QModelIndex].connect(self._bcItemChanged)
+            self._listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+            layout.addWidget(self._listview, stretch=1)
+            self._bcWindow.setWindowTitle("Boundary Condition settings")
+            self._bcWindow.setLayout(layout)
+            self._boundaryConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            self._bcWindow.show()
+        else:
+            self._bcWindow.show()
+
+        return self._bcWindow
 
     def _boundaryPropertyChanged(self, boundaryPropertyEditor, name):
         """Signal when body properties have changed"""
@@ -285,6 +316,18 @@ class elmerWindowHandler():
         de.show()
         self._icWindow.setWindowTitle(de.nameEdit.text())
 
+    def _bcItemChanged(self, index):
+        """Method for changing the selected item in the boundary condition view"""
+        # delete second item == editor
+        layout = self._bcWindow.layout()
+        item = layout.takeAt(1)
+        item.widget().close()
+        # insert the selected editor
+        de = self._boundaryConditionEditor[index.row()]
+        layout.insertWidget(1, de, stretch=5)
+        de.show()
+        self._bcWindow.setWindowTitle(de.nameEdit.text())
+        
     def _bodyForceEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the body force settings\n
         signal = the button hit\n
@@ -314,6 +357,7 @@ class elmerWindowHandler():
                 item.setText(bfName)
                 self._bfWindow.setWindowTitle(bfName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._bfWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new body force"""
@@ -398,6 +442,7 @@ class elmerWindowHandler():
                 item.setText(icName)
                 self._icWindow.setWindowTitle(icName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._icWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new initial condition"""
@@ -453,6 +498,91 @@ class elmerWindowHandler():
                 self._initialConditionEditor = []
                 self._icWindow.hide()
 
+    def _boundaryConditionEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the boundary condition settings\n
+        signal = the button hit\n
+        ids = ID of the boundary condition set"""
+        for bc in self._boundaryConditionEditor:
+            temp = bc.ID
+            if temp == ids:
+                ids = self._boundaryConditionEditor.index(bc)
+                break
+
+        listview = self._listview
+
+        signalOK = False
+        if(signal == dynamiceditor.MatTypes.MAT_OK or
+            signal == dynamiceditor.MatTypes.MAT_APPLY):
+            signalOK = True
+
+        if(signalOK):
+            item = listview.item(ids)
+            de = self._boundaryConditionEditor[ids]
+            bcName = str(de.nameEdit.text()).strip()
+            if not bcName:
+                sys.stdout.write("Boundary Condition\n")
+                sys.stdout.flush()
+                return
+            else:
+                item.setText(bcName)
+                self._bcWindow.setWindowTitle(bcName)
+                if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
+                    self._bcWindow.hide()
+        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
+            """Create a new initial condition"""
+            # get window and layout
+            window = self._bcWindow
+            layout = window.layout()
+
+            # new instance of the dynamic editor
+            current = self._bcCurrent
+            de = dynamiceditor.DynamicEditor()
+            self._boundaryConditionEditor.append(de)
+            de.setupTabs(self._elmerDefs, "BoundaryCondition", current)
+            de.applyButton.setText("Apply")
+            de.discardButton.setText("Delete")
+            de.dynamicEditorReady[int, int].connect(self._boundaryConditionEditorFinishedSlot)
+
+            # clear right side of layout and at the new dynamic editor
+            item = layout.takeAt(1)
+            if item is not None:
+                item.widget().close()
+            layout.addWidget(de, stretch=5)
+            # add item to list
+            item = QtGui.QListWidgetItem()
+            item.setText(de.nameEdit.text())
+            self._listview.addItem(item)
+            self._bcWindow.setWindowTitle(de.nameEdit.text())
+
+            # set new as selected
+            count = len(self._boundaryConditionEditor)
+            self._listview.item(count - 1).setSelected(True)
+            self._bcCurrent += 1
+        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
+            """Remove the current initial condition from the collection"""
+            if len(self._boundaryConditionEditor) > 1:
+                # remove the current equation
+                item = self._listview.takeItem(ids)
+                del self._boundaryConditionEditor[ids]
+
+                # show the previous element
+                if ids > 0:
+                    ids -= 1
+                self._listview.item(ids).setSelected(True)
+                layout = self._bcWindow.layout()
+                item = layout.takeAt(1)
+                item.widget().close()
+                de = self._boundaryConditionEditor[ids]
+                layout.insertWidget(1, de, stretch=5)
+                de.show()
+                self._bcWindow.setWindowTitle(de.nameEdit.text())
+            else:
+                # remove the current element
+                del self._boundaryConditionEditor[ids]
+                self._boundaryConditionEditor = []
+                self._bcWindow.hide()
+
     def _matEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the materials settings\n
         signal = the button hit\n
@@ -482,6 +612,7 @@ class elmerWindowHandler():
                 item.setText(matName)
                 self._matWindow.setWindowTitle(matName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._matWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new material"""
@@ -570,6 +701,7 @@ class elmerWindowHandler():
                 item.setText(equationName)
                 self._eqWindow.setWindowTitle(equationName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._eqWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new equation"""
@@ -630,16 +762,23 @@ class elmerWindowHandler():
                 self._eqWindow.hide()
 
     def _showMaterialLibrary(self, current, ids):
-        return
+        """Opens the material library and connects it to the currently
+        active material"""
+        self._materialLibrary.editor = self._materialEditor[ids]
+        self._materialLibrary.elmerDefs = self._elmerDefs
+        self._materialLibrary.show()
 
     def _editNumericalMethods(self, current, ids):
         """Edit the solver specific properties\n
-        current = ID of the equation set that should be edited"""
+        current = tab-index\n
+        ids = id of the equation"""
 
         title = ""
-        for i in range(0, len(self._equationEditor)):
-            title = self._equationEditor[i].tabWidget.tabText(current)
-            break
+        # get active tab in the currently opened equation set
+        for eq in self._equationEditor:
+            if eq.ID == ids:
+                title = eq.tabWidget.tabText(current)
+                break
 
         if(title == "General"):
             sys.stdout.write("No solver controls for 'General' equation options")
@@ -679,6 +818,7 @@ class elmerWindowHandler():
 
         xml_files = glob.glob(path + "*.xml")
         xml_files = [file for file in xml_files if not os.path.basename(file).startswith("edf")]
+        xml_files = [file for file in xml_files if not os.path.basename(file).startswith("eg")]
 
         for xml_file in xml_files:
             data = et.parse(xml_file).getroot()
