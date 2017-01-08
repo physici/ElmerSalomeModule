@@ -8,10 +8,14 @@ Dynamic editor class
 
 Class changes appaerance according to provide edf-xml document
 """
-
+# required to get the Python 2 behavior of QT
+# see https://stackoverflow.com/a/21223060
+import sip
+sip.setapi('QVariant', 1)
 from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore
+import sys
 
 
 class MatTypes():
@@ -366,7 +370,7 @@ class DynamicEditor(QtGui.QWidget):
     def _lSlot(self, state):
         """Event when CheckBox changed"""
         self._param = QtXml.QDomElement()
-        qs = self.sender().property("dom address")
+        qs = str(self.sender().property("dom address").toPyObject())
 
         ind = qs.rfind('/')
         ids = qs[ind:]
@@ -400,7 +404,7 @@ class DynamicEditor(QtGui.QWidget):
     def _textChangedSlot(self, text):
         """Event when TextBox changed"""
         self._param = QtXml.QDomElement()
-        qs = self.sender().property("dom address")
+        qs = str(self.sender().property("dom address").toPyObject())
 
         ind = qs.rfind('/')
         ids = qs[ind:]
@@ -424,7 +428,7 @@ class DynamicEditor(QtGui.QWidget):
     def _comboSlot(self, select):
         """Event when comboBox changend"""
         select = self.sender().itemText(select)
-        qs = self.sender().property("dom address")
+        qs = str(self.sender().property("dom address").toPyObject())
         item = QtXml.QDomElement()
 
         ind = qs.rfind('/')

@@ -52,6 +52,7 @@ class elmerWindowHandler():
         self._bfWindow = None
         self._bcWindow = None
         self._icWindow = None
+        self._gsWindow = None
         self._matCurrent = 0
         self._eqCurrent = 0
         self._bfCurrent = 0
@@ -151,8 +152,14 @@ class elmerWindowHandler():
 
     def showGeneralSetup(self):
         """Initialize an instance of GeneralSetup and returns it to Salome"""
-        ge = generalsetup.GeneralSetup(path_forms)
-        return ge
+        if self._gsWindow is None:
+            ge = generalsetup.GeneralSetup(path_forms)
+            ge.show()
+            self._gsWindow = ge
+            return ge
+        else:
+            self._gsWindow.show()
+            return self._gsWindow
 
     def showSolverParametersEditor(self):
         """Initialize an instance of Solver Param Editor and returns it to Salome"""
@@ -351,6 +358,7 @@ class elmerWindowHandler():
                 item.setText(bfName)
                 self._bfWindow.setWindowTitle(bfName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._bfWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new body force"""
@@ -435,6 +443,7 @@ class elmerWindowHandler():
                 item.setText(icName)
                 self._icWindow.setWindowTitle(icName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._icWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new initial condition"""
@@ -519,6 +528,7 @@ class elmerWindowHandler():
                 item.setText(bcName)
                 self._bcWindow.setWindowTitle(bcName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._bcWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new initial condition"""
@@ -603,6 +613,7 @@ class elmerWindowHandler():
                 item.setText(matName)
                 self._matWindow.setWindowTitle(matName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._matWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new material"""
@@ -691,6 +702,7 @@ class elmerWindowHandler():
                 item.setText(equationName)
                 self._eqWindow.setWindowTitle(equationName)
                 if signal == dynamiceditor.MatTypes.MAT_OK:
+                    # hide window, but keep contents in memory
                     self._eqWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
             """Create a new equation"""
