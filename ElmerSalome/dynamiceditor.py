@@ -8,10 +8,14 @@ Dynamic editor class
 
 Class changes appaerance according to provide edf-xml document
 """
-
+# required to get the Python 2 behavior of QT
+# see https://stackoverflow.com/a/21223060
+import sip
+sip.setapi('QVariant', 1)
 from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore
+import sys
 
 
 class MatTypes():
@@ -31,7 +35,14 @@ class BodyTypes():
 
 
 class hash_entry_t():
-    """Seems to be a container for exchanging stuff"""
+    """
+    Container for information about created widgets that are stored in
+    the qhash-dictionary.
+
+    :widget: type of widget
+    :label: label of the corresponding label
+    :elem: contains xml-information about the linked elements
+    """
     widget = None
     label = None
     elem = None
@@ -84,7 +95,6 @@ class DynLineEdit(QtGui.QWidget):
     def lineEditClose(self):
         q = self.textEdit.toPlainText()
         q.replace('\n', ';')
-
         self.lineEdit.setText(q)
         self.frame.close()
         self.name = ""
@@ -118,14 +128,10 @@ class DynamicEditor(QtGui.QWidget):
         self.applyButton = None
         self.spareButton = None
         self.discardButton = None
-
-        self.h = hash_entry_t()
         self.qhash = {}
-
         self.tabWidget = None
         self.nameEdit = None
         self.tabs = None
-
         self.spareBox = None
         self.spareScroll = None
 
@@ -140,6 +146,7 @@ class DynamicEditor(QtGui.QWidget):
     def setupTabs(self, elmerDefs, Section, ID):
         """Creates the taps of the dynamic widget according to the elmerDefs"""
         self.ID = ID
+        self.qhash.clear()
 
         layout = self.layout()
         if(layout is not None):
@@ -179,7 +186,7 @@ class DynamicEditor(QtGui.QWidget):
                 self._param = self._section.firstChildElement("Parameter")
 
                 while(self._param.isNull() is False):
-
+                    h = hash_entry_t()
                     # label
                     widget_type = self._param.attribute("Widget", "Edit")
                     widget_enabled = self._param.attribute("Enabled", "True")
@@ -194,11 +201,10 @@ class DynamicEditor(QtGui.QWidget):
                     statusTip = str(self._param.firstChildElement("StatusTip").text()).strip()
                     fullName = "/" + str(self._name.text()).strip() + "/"
                     fullName = fullName + Section + "/" + labelName + "/" + str(ID)
-                    self.h.widget = None
-
+                    h.widget = None
                     if(widget_type == "Edit"):
                         edit = DynLineEdit()
-                        self.h.widget = edit.lineEdit
+                        h.widget = edit.lineEdit
                         edit.lineEdit.setText(paramDefault)
                         edit.name = fullName
                         edit.lineEdit.returnPressed.connect(edit.editSlot)
@@ -211,11 +217,11 @@ class DynamicEditor(QtGui.QWidget):
                         fontHeight = fontMetrics.height()
                         textEdit.setMinimumHeight(5*fontHeight)
                         textEdit.setMaximumHeight(8*fontHeight)
-                        self.h.widget = textEdit
+                        h.widget = textEdit
 
                     elif(widget_type == "Combo"):
                         combo = QtGui.QComboBox()
-                        self.h.widget = combo
+                        h.widget = combo
                         count = 0
                         active = 0
                         item = self._param.firstChildElement("Item")
@@ -232,7 +238,7 @@ class DynamicEditor(QtGui.QWidget):
 
                     elif(widget_type == "CheckBox"):
                         l = QtGui.QCheckBox()
-                        self.h.widget = l
+                        h.widget = l
                         l.setText("")
                         l.setChecked(False)
                         if(paramDefault == "True"):
@@ -246,41 +252,40 @@ class DynamicEditor(QtGui.QWidget):
                         font.setUnderline(True)
                         label.setFont(font)
                         label.setText(labelName)
-                        self.h.widget = label
+                        h.widget = label
 
-                    if(self.h.widget):
-                        self.h.widget.setWhatsThis(whatis)
-                        self.h.widget.setStatusTip(statusTip)
-                        self.h.widget.setProperty("dom address", fullName)
-                        self.h.elem = self._param
+                    if(h.widget):
+                        h.widget.setWhatsThis(whatis)
+                        h.widget.setStatusTip(statusTip)
+                        h.widget.setProperty("dom address", fullName)
+                        h.elem = self._param
                         if(widget_enabled == "False"):
-                            self.h.widget.setEnabled(False)
+                            h.widget.setEnabled(False)
                         if(widget_type != "TextEdit"):
-                            self.h.widget.setFixedHeight(18)
+                            h.widget.setFixedHeight(18)
                         if(widget_type == "TextEdit"):
                             textEditLabel = QtGui.QLabel()
                             textEditLabel.setText(labelName)
-                            self.h.label = textEditLabel
-                            grid.addWidget(self.h.widget, params, 0, 1, 2)
-
+                            h.label = textEditLabel
+                            grid.addWidget(h.widget, params, 0, 1, 2)
                             if(widget_visible == "False"):
-                                self.h.label.hide()
-                                self.h.widget.hide()
+                                h.label.hide()
+                                h.widget.hide()
 
                         elif(widget_type != "Label"):
                             label = QtGui.QLabel()
                             label.setText(labelName)
-                            self.h.label = label
-                            grid.addWidget(self.h.label,  params, 0)
-                            grid.addWidget(self.h.widget, params, 1)
-
+                            h.label = label
+                            grid.addWidget(h.label,  params, 0)
+                            grid.addWidget(h.widget, params, 1)
                             if(widget_visible == "False"):
-                                self.h.label.hide()
-                                self.h.widget.hide()
+                                h.label.hide()
+                                h.widget.hide()
+
                         else:
-                            self.h.label = None
-                            grid.addWidget(self.h.widget, params, 0)
-                        self.qhash[fullName] = self.h
+                            h.label = None
+                            grid.addWidget(h.widget, params, 0)
+                        self.qhash.update({fullName: h})
 
                     self._param = self._param.nextSiblingElement("Parameter")
                     params += 1
@@ -357,100 +362,100 @@ class DynamicEditor(QtGui.QWidget):
     def _lSlot(self, state):
         """Event when CheckBox changed"""
         self._param = QtXml.QDomElement()
-        q = QtGui.QObject.sender().property("dom address").toString()
+        qs = str(self.sender().property("dom address").toPyObject())
 
-        ind = int(q.lastIndexOf('/', -1))
-        ids = str(q.mid(ind, -1))
+        ind = qs.rfind('/')
+        ids = qs[ind:]
 
-        self._param = self.qhash[q].elem.firstChildElement("Activate")
-        while(self._param.isNull() is not False):
-            q = str(self._param.text()).strip() + ids
-            self.qhash[q].widget.setEnabled(state)
-            widget_visible = self.qhash[q].elem.attribute("Visible", "Unknown")
+        self._param = self.qhash[qs].elem.firstChildElement("Activate")
+        while(self._param.isNull() is False):
+            qs = str(self._param.text()).strip() + ids
+            self.qhash[qs].widget.setEnabled(state)
+            widget_visible = self.qhash[qs].elem.attribute("Visible", "Unknown")
             if(state is False & widget_visible != "Unknown"):
-                self.qhash[q].label.hide()
-                self.qhash[q].widget.hide()
+                self.qhash[qs].label.hide()
+                self.qhash[qs].widget.hide()
             else:
-                self.qhash[q].label.show()
-                self.qhash[q].widget.show()
+                self.qhash[qs].label.show()
+                self.qhash[qs].widget.show()
             self._param = self._param.nextSiblingElement("Activate")
 
-        self._param = self.qhash[q].elem.firstChildElement("Deactivate")
-        while(self._param.isNull() is not False):
-            q = str(self._param.text()).strip() + ids
-            self.qhash[q].widget.setEnabled(-state)
-            widget_visible = self.qhash[q].elem.attribute("Visible", "Unknown")
+        self._param = self.qhash[qs].elem.firstChildElement("Deactivate")
+        while(self._param.isNull() is False):
+            qs = str(self._param.text()).strip() + ids
+            self.qhash[qs].widget.setEnabled(-state)
+            widget_visible = self.qhash[qs].elem.attribute("Visible", "Unknown")
             if(state is True & widget_visible != "Unknown"):
-                self.qhash[q].label.hide()
-                self.qhash[q].widget.hide()
+                self.qhash[qs].label.hide()
+                self.qhash[qs].widget.hide()
             else:
-                self.qhash[q].label.show()
-                self.qhash[q].widget.show()
-        self._param = self._param.nextSiblingElement("Deactivate")
+                self.qhash[qs].label.show()
+                self.qhash[qs].widget.show()
+            self._param = self._param.nextSiblingElement("Deactivate")
 
     def _textChangedSlot(self, text):
         """Event when TextBox changed"""
         self._param = QtXml.QDomElement()
-        q = QtGui.QObject.sender().property("dom address").toString()
+        qs = str(self.sender().property("dom address").toPyObject())
 
-        ind = int(q.lastIndexOf('/', -1))
-        ids = str(q.mid(ind, -1))
+        ind = qs.rfind('/')
+        ids = qs[ind:]
 
-        self._param = self.qhash[q].elem.firstChildElement("Activate")
-        while(self._param.isNull() is not False):
-            q = str(self._param.text()).strip() + ids
-            widget_visible = self.qhash[q].elem.attribute("Visible", "Uknown")
+        self._param = self.qhash[qs].elem.firstChildElement("Activate")
+        while(self._param.isNull() is False):
+            qs = str(self._param.text()).strip() + ids
+            widget_visible = self.qhash[qs].elem.attribute("Visible", "Uknown")
 
             if(text != ""):
-                self.qhash[q].widget.setEnabled(True)
-                self.qhash[q].widget.show()
-                self.qhash[q].label.show()
+                self.qhash[qs].widget.setEnabled(True)
+                self.qhash[qs].widget.show()
+                self.qhash[qs].label.show()
             else:
-                self.qhash[q].widget.setEnabled(False)
+                self.qhash[qs].widget.setEnabled(False)
                 if(widget_visible != "Unknown"):
-                    self.qhash[q].label.hide()
-                    self.qhash[q].widget.hide()
+                    self.qhash[qs].label.hide()
+                    self.qhash[qs].widget.hide()
             self._param = self._param.nextSiblingElement("Activate")
 
     def _comboSlot(self, select):
         """Event when comboBox changend"""
-        q = QtGui.QObject.sender().property("dom address").toString()
+        select = self.sender().itemText(select)
+        qs = str(self.sender().property("dom address").toPyObject())
         item = QtXml.QDomElement()
 
-        ind = int(q.lastIndexOf('/', -1))
-        ids= str(q.mid(ind, -1))
+        ind = qs.rfind('/')
+        ids = qs[ind:]
 
-        item = self.qhash[q].elem.firstChildElement("Item")
-        while(item.isNull() is not False):
+        item = self.qhash[qs].elem.firstChildElement("Item")
+        while(item.isNull() is False):
             itemName = item.firstChildElement("Name")
             if(str(itemName.text()).strip() != select):
                 activ = item.firstChildElement("Activate")
-                while(activ.isNull() is not False):
-                    activ = activ.nextSiblingElement("Activate")
+                while(activ.isNull() is False):
                     s = str(activ.text()).strip() + ids
-                    self.h = self.qhash[s]
-                    widget_enabled = self.h.elem.attribute("Enabled", "True")
-                    widget_visible = self.h.elem.attribute("Visible", "Unknown")
-
-                    self.h.widget.setEnabled(False)
+                    h = self.qhash[s]
+                    widget_enabled = h.elem.attribute("Enabled", "True")
+                    widget_visible = h.elem.attribute("Visible", "Unknown")
+                    h.widget.setEnabled(False)
                     if(widget_visible != "Unknown"):
-                        self.h.label.hide()
-                        self.h.widget.hide()
-                    item = item.nextSiblingElement("Item")
+                        h.label.hide()
+                        h.widget.hide()
+                    activ = activ.nextSiblingElement("Activate")
+            item = item.nextSiblingElement("Item")
 
-        item = self.qhash[q].elem.firstChildElement("Item")
-        while(item.isNull() is not False):
+        item = self.qhash[qs].elem.firstChildElement("Item")
+        while(item.isNull() is False):
             itemName = item.firstChildElement("Name")
             if(str(itemName.text()).strip() == select):
                 activ = item.firstChildElement("Activate")
-                while(activ.isNull() is not False):
+                while(activ.isNull() is False):
                     s = str(activ.text()).strip() + ids
-                    self.h = self.qhash[s]
-                    self.h.widget.setEnabled(True)
-                    self.h.label.show()
-                    self.h.widget.show()
+                    h = self.qhash[s]
+                    h.widget.setEnabled(True)
+                    h.label.show()
+                    h.widget.show()
                     activ = activ.nextSiblingElement("Activate")
-                item = item.nextSiblingElement("Item")
+            item = item.nextSiblingElement("Item")
 
     def minimumSizeHint(self):
         return QtCore.QSize(128, 128)

@@ -11,12 +11,12 @@ from PyQt4 import QtGui
 from PyQt4 import uic
 
 
-class SovlerParameterEditor(QtGui.QDialog):
+class SolverParameterEditor(QtGui.QDialog):
     """Class that provides the Solver paramter editor and its functionality"""
 
     def __init__(self, path_forms):
         """Constructor"""
-        super(SovlerParameterEditor, self).__init__()
+        super(SolverParameterEditor, self).__init__()
         uic.loadUi(path_forms + "solverparameters.ui", self)
 
         self.applyButton.clicked.connect(self.close)

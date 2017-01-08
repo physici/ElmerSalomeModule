@@ -22,4 +22,5 @@ class GeneralSetup(QtGui.QDialog):
 
     def applyChanges(self):
         """Apply button hit"""
-        QtGui.QMessageBox.about(None, "Test", "Test")
+        # Hide window, but keep contents in memory
+        self.hide()
