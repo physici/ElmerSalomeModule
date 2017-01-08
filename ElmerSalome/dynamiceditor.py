@@ -129,7 +129,6 @@ class DynamicEditor(QtGui.QWidget):
         self.applyButton = None
         self.spareButton = None
         self.discardButton = None
-
         self.qhash = {}
 
         self.tabWidget = None
@@ -190,9 +189,7 @@ class DynamicEditor(QtGui.QWidget):
                 self._param = self._section.firstChildElement("Parameter")
 
                 while(self._param.isNull() is False):
-
                     h = hash_entry_t()
-
                     # label
                     widget_type = self._param.attribute("Widget", "Edit")
                     widget_enabled = self._param.attribute("Enabled", "True")
@@ -208,7 +205,6 @@ class DynamicEditor(QtGui.QWidget):
                     fullName = "/" + str(self._name.text()).strip() + "/"
                     fullName = fullName + Section + "/" + labelName + "/" + str(ID)
                     h.widget = None
-
                     if(widget_type == "Edit"):
                         edit = DynLineEdit()
                         h.widget = edit.lineEdit
@@ -413,7 +409,6 @@ class DynamicEditor(QtGui.QWidget):
         while(self._param.isNull() is False):
             qs = str(self._param.text()).strip() + ids
             widget_visible = self.qhash[qs].elem.attribute("Visible", "Uknown")
-
             if(text != ""):
                 self.qhash[qs].widget.setEnabled(True)
                 self.qhash[qs].widget.show()

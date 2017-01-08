@@ -58,7 +58,6 @@ class elmerWindowHandler():
         self._bfCurrent = 0
         self._bcCurrent = 0
         self._icCurrent = 0
-        
         self._xmlMerge(path_edfs)
         self._parent = self
 
@@ -328,7 +327,7 @@ class elmerWindowHandler():
         layout.insertWidget(1, de, stretch=5)
         de.show()
         self._bcWindow.setWindowTitle(de.nameEdit.text())
-
+        
     def _bodyForceEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the body force settings\n
         signal = the button hit\n
