@@ -22,7 +22,7 @@ class BoundaryPropertyEditor(QtGui.QDialog):
         """Constructor"""
         super(BoundaryPropertyEditor, self).__init__()
 
-        uic.loadUi(path_forms + "BoundaryPropertyEditor.ui", self)
+        uic.loadUi(path_forms + "boundarypropertyeditor.ui", self)
 
         self.bodyCondition = None
         self.objName = None
