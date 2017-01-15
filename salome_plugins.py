@@ -18,15 +18,18 @@ plugin_path = ""
 if (os.environ.get("SALOME_PLUGINS_PATH") is not None):
     plugin_path = os.environ.get("SALOME_PLUGINS_PATH") +\
                   os.sep + "ElmerSalome"
+    # check existence of Elmer-path
+    if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
+        sys.exit("No Elmer module found")
 else:
     import inspect
     plugin_path = os.path.dirname(inspect.getfile(inspect.currentframe())) +\
                   os.sep + "ElmerSalome"
+    # check existence of Elmer-path
+    if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
+        sys.exit("No Elmer module found")
 
 sys.path.append(plugin_path)
-
-if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
-    sys.exit("No Elmer module found")
 
 # import window handler
 import elmer_window_handler as ewh
@@ -153,6 +156,18 @@ def showInitialConditions(context):
 
     main.showAddInitialCondition()
 
+
+def showBoundaryConditions(context):
+    """Make a new boundary condition set and call the dynamic editor"""
+    global main, sp
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.about(None, str(active_module),
+                                "Functionality is only provided in mesh module.")
+        return
+
+    main.showAddBoundaryCondition()
+
 # declare ShowWindow-Function to plugin manager
 sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
 sp.AddFunction('ELMER/General settings', 'General simulation settings', generalSetup)
@@ -160,4 +175,5 @@ sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
 sp.AddFunction('ELMER/Materials', 'Materials', showMaterials)
 sp.AddFunction('ELMER/Body forces', 'Body forces', showBodyForces)
 sp.AddFunction('ELMER/Initial conditions', 'Initial conditions', showInitialConditions)
+sp.AddFunction('ELMER/Boundary conditions', 'Boundary conditions', showBoundaryConditions)
 sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineElementProperties)

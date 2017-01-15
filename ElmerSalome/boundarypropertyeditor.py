@@ -24,7 +24,7 @@ class BoundaryPropertyEditor(QtGui.QDialog):
 
         uic.loadUi(path_forms + "boundarypropertyeditor.ui", self)
 
-        self.bodyCondition = None
+        self.bodyCondition = 0
         self.objName = None
         self.boundaryProperties = None
 
