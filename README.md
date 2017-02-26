@@ -6,9 +6,10 @@ Plugin for SALOME platform to access Elmer functionality
 * Salome 7.8
 
 ##Installation:
-* create a 'plugins'-directory in the root path of SALOME or somewhere convenient
-  * or use the GUI-'plugins'-folder -> $GUI_ROOT_DIR/share/salome/plugins/
-* copy ElmerSalome-directory into the directory
-* copy the salome_plugins.py-file in the in the same 'plugins'-directory, but outside the ElmerSalome-folder
-  * alternatively, modify the existing file if you use other modules
+* create a plugin directory in the root path of SALOME or somewhere convenient, if not already using one
+* copy ElmerSalome-directory into the plugin directory
+* copy the salome_plugins.py-file in the plugin directory or modify the existing file 
 * register the directory via the SALOME_PLUGIN_PATH system variable
+  
+##ToDo:
+*  check whether registration via system variables can be bypassed by using the env.bat batch file that starts SALOME
