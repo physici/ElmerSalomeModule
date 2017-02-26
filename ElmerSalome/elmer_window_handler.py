@@ -23,6 +23,7 @@ import dynamiceditor
 import bodypropertyeditor
 import boundarypropertyeditor
 import materiallibrary
+import sifwrite
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + os.sep + "forms" + os.sep
@@ -58,7 +59,6 @@ class elmerWindowHandler():
         self._bfCurrent = 0
         self._bcCurrent = 0
         self._icCurrent = 0
-        
         self._xmlMerge(path_edfs)
         self._parent = self
 
@@ -149,13 +149,18 @@ class elmerWindowHandler():
         be.show()
         self._window = be
         return self._window
+        
+    def initGeneralSetup(self):
+        ge = generalsetup.GeneralSetup(path_forms)
+        self._gsWindow = ge
+        return ge
 
     def showGeneralSetup(self):
         """Initialize an instance of GeneralSetup and returns it to Salome"""
         if self._gsWindow is None:
-            ge = generalsetup.GeneralSetup(path_forms)
+            #ge = generalsetup.GeneralSetup(path_forms)
+            ge = self.initGeneralSetup()
             ge.show()
-            self._gsWindow = ge
             return ge
         else:
             self._gsWindow.show()
@@ -328,7 +333,7 @@ class elmerWindowHandler():
         layout.insertWidget(1, de, stretch=5)
         de.show()
         self._bcWindow.setWindowTitle(de.nameEdit.text())
-
+        
     def _bodyForceEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the body force settings\n
         signal = the button hit\n
@@ -531,7 +536,7 @@ class elmerWindowHandler():
                     # hide window, but keep contents in memory
                     self._bcWindow.hide()
         elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            """Create a new initial condition"""
+            """Create a new boundary condition"""
             # get window and layout
             window = self._bcWindow
             layout = window.layout()
@@ -561,7 +566,7 @@ class elmerWindowHandler():
             self._listview.item(count - 1).setSelected(True)
             self._bcCurrent += 1
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            """Remove the current initial condition from the collection"""
+            """Remove the current boundary condition from the collection"""
             if len(self._boundaryConditionEditor) > 1:
                 # remove the current equation
                 item = self._listview.takeItem(ids)
@@ -832,6 +837,9 @@ class elmerWindowHandler():
 
         self._elmerDefs = QtXml.QDomDocument()
         self._elmerDefs.setContent(temp)
+        
+    def sif_write(self):
+        sifwrite.write_sif(self)
 
 
 if __name__ == "__main__":

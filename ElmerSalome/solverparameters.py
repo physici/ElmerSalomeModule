@@ -4,7 +4,7 @@ Created on Sat Sep 24 19:51:49 2016
 
 @author: Rainer Jacob
 
-Solver paramter editor class
+Solver parameter editor class
 """
 
 from PyQt4 import QtGui
@@ -12,7 +12,7 @@ from PyQt4 import uic
 
 
 class SolverParameterEditor(QtGui.QDialog):
-    """Class that provides the Solver paramter editor and its functionality"""
+    """Class that provides the Solver parameter editor and its functionality"""
 
     def __init__(self, path_forms):
         """Constructor"""

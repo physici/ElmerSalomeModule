@@ -681,7 +681,7 @@
            </spacer>
           </item>
           <item row="4" column="0">
-           <widget class="QLabel" name="linearSystemResiduaOutputLabel">
+           <widget class="QLabel" name="linearSystemResidualOutputLabel">
             <property name="text">
              <string>Residual output</string>
             </property>
@@ -695,7 +695,7 @@
            </widget>
           </item>
           <item row="4" column="1" colspan="3">
-           <widget class="QLineEdit" name="linearSystemResiduaOutputEdit">
+           <widget class="QLineEdit" name="linearSystemResidualOutputEdit">
             <property name="text">
              <string>1</string>
             </property>
