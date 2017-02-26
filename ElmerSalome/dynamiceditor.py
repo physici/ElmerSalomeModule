@@ -11,12 +11,6 @@ Class changes appearance according to provide edf-xml document
 # required to get the Python 2 behavior of QT
 # see https://stackoverflow.com/a/21223060
 import sip
-try:
-    sip.setapi('QVariant', 1)
-except:
-    print("Failed to set Qt API. Errors may occur.")
-    pass
-
 from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore
@@ -371,7 +365,10 @@ class DynamicEditor(QtGui.QWidget):
     def _lSlot(self, state):
         """Event when CheckBox changed"""
         self._param = QtXml.QDomElement()
-        qs = str(self.sender().property("dom address").toPyObject())
+        if sip.getapi('QVariant') == 1:
+            qs = str(self.sender().property("dom address").toPyObject())
+        else:
+            qs = str(self.sender().property("dom address"))
 
         ind = qs.rfind('/')
         ids = qs[ind:]
@@ -405,7 +402,10 @@ class DynamicEditor(QtGui.QWidget):
     def _textChangedSlot(self, text):
         """Event when TextBox changed"""
         self._param = QtXml.QDomElement()
-        qs = str(self.sender().property("dom address").toPyObject())
+        if sip.getapi('QVariant') == 1:
+            qs = str(self.sender().property("dom address").toPyObject())
+        else:
+            qs = str(self.sender().property("dom address"))
 
         ind = qs.rfind('/')
         ids = qs[ind:]
@@ -428,7 +428,10 @@ class DynamicEditor(QtGui.QWidget):
     def _comboSlot(self, select):
         """Event when comboBox changend"""
         select = self.sender().itemText(select)
-        qs = str(self.sender().property("dom address").toPyObject())
+        if sip.getapi('QVariant') == 1:
+            qs = str(self.sender().property("dom address").toPyObject())
+        else:
+            qs = str(self.sender().property("dom address"))
         item = QtXml.QDomElement()
 
         ind = qs.rfind('/')
