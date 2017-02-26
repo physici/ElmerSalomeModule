@@ -791,8 +791,15 @@ class elmerWindowHandler():
             sys.stdout.flush()
             return
 
+        # if tab is not yet in list, resize list and copy previous items
         if(current >= len(self._solverParameterEditor)):
-            self._solverParameterEditor.append(solverparameters.SolverParameterEditor(path_forms))
+            tmp = (current + 1) * [None]
+            for idx, element in enumerate(self._solverParameterEditor):
+                tmp[idx] = element
+            self._solverParameterEditor = tmp
+
+        if not self._solverParameterEditor[current]:
+            self._solverParameterEditor[current] = solverparameters.SolverParameterEditor(path_forms)
 
         spe = self._solverParameterEditor[current]
         spe.setWindowTitle("Solver control for {}".format(title))
