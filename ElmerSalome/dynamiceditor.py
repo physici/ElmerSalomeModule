@@ -11,7 +11,12 @@ Class changes appearance according to provide edf-xml document
 # required to get the Python 2 behavior of QT
 # see https://stackoverflow.com/a/21223060
 import sip
-sip.setapi('QVariant', 1)
+try:
+    sip.setapi('QVariant', 1)
+except:
+    print("Failed to set Qt API. Errors may occur.")
+    pass
+
 from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore
