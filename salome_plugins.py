@@ -10,8 +10,11 @@ Salome Plugin-manager file for declaration of Elmer functionality to Salome
 from PyQt4 import QtGui
 
 import salome_pluginsmanager as sp
+import smesh
+import salome
 import sys
 import os
+import subprocess
 
 plugin_path = ""
 # add SALOME_PLUGIN_PATH to Python environment for easier module import
@@ -36,11 +39,13 @@ global main
 
 # the environement variable is required to prevent the re-initialization
 # of the Elmer-class each time the menu is opened, otherwise everything will
-# be lost again, see http://www.salome-platform.org/forum/forum_12/575675631/639739196
+# be lost again,
+# see http://www.salome-platform.org/forum/forum_12/575675631/639739196
 if os.getenv("already_initialized", "0") != "1":
     main = ewh.elmerWindowHandler()
 
 os.environ["already_initialized"] = "1"
+
 
 # define about Function
 def about(context):
@@ -92,7 +97,7 @@ def showMaterials(context):
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
-        QtGui.QMessageBox.about(None, str(active_module),
+        QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
@@ -104,14 +109,14 @@ def defineElementProperties(context):
     global main, sp
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
-        QtGui.QMessageBox.about(None, str(active_module),
+        QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
     # check shape, should be solid/body
     selCount = sp.sg.SelectedCount()
     if selCount == 0:
-        QtGui.QMessageBox.about(None, str(active_module),
+        QtGui.QMessageBox.information(None, str(active_module),
                                 "Nothing selected. Please select a volume/face or group of.")
         return
     else:
@@ -126,7 +131,7 @@ def defineElementProperties(context):
             return
         else:
             mes = "Invalid selection. Check selection."
-            QtGui.QMessageBox.about(None, str(active_module), mes)
+            QtGui.QMessageBox.warning(None, str(active_module), mes)
             return
 
 
@@ -135,34 +140,72 @@ def showBodyForces(context):
     global main, sp
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
-        QtGui.QMessageBox.about(None, str(active_module),
+        QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
     main.showAddBodyForce()
+
 
 def showBoundaryConditions(context):
     """Make a new boundary condition set and call the dynamic editor"""
     global main, sp
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
-        QtGui.QMessageBox.about(None, str(active_module),
+        QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
     main.showAddBoundaryCondition()
+
 
 def showInitialConditions(context):
     """Make a new initial condition set and call the dynamic editor"""
     global main, sp
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
-        QtGui.QMessageBox.about(None, str(active_module),
+        QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
     main.showAddInitialCondition()
-    
+
+
+def createMesh(context):
+    """Create mesh with ElmerGrid"""
+    global main, sp, smesh, salome
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.information(None, str(active_module),
+                                "Functionality is only provided in mesh module.")
+        return
+
+    selCount = sp.sg.SelectedCount()
+    if selCount == 0:
+        QtGui.QMessageBox.warning(None, str(active_module),
+                                  "Nothing selected. Please select a mesh.")
+        return
+    else:
+        objID = sp.sg.getSelected(0)
+        ref = salome.IDToObject(objID)
+        try:
+            myMesh = smesh.Mesh(ref)
+        except AttributeError:
+            QtGui.QMessageBox.warning(None, str(active_module),
+                                      "Selection is not a mesh.")
+            return
+        title = 'Export mesh to file'
+        fname = QtGui.QFileDialog.getSaveFileName(parent=None, caption=title,
+                                                  filter='Mesh files (*.unv)')
+        if fname:
+            fname = os.path.normpath(str(fname))
+            path = os.path.dirname(fname)
+            myMesh.ExportUNV(fname)
+            sp.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname,
+                                                                    path))
+            main.meshDirectory = path
+
+
 def writeSif(context):
     main.sif_write()
 
@@ -175,4 +218,5 @@ sp.AddFunction('ELMER/Body forces', 'Body forces', showBodyForces)
 sp.AddFunction('ELMER/Boundary conditions', 'Boundary conditions', showBoundaryConditions)
 sp.AddFunction('ELMER/Initial conditions', 'Initial conditions', showInitialConditions)
 sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineElementProperties)
+sp.AddFunction('ELMER/Create mesh', 'Mesh creation', createMesh)
 sp.AddFunction('ELMER/Write Solver Input File', 'Write sif', writeSif)

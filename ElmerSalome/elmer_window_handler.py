@@ -36,6 +36,8 @@ class elmerWindowHandler():
 
     def __init__(self):
         """Constructor"""
+        # public fields
+        self.meshDirectory = ''
         # private fields
         self._equationEditor = []
         self._materialEditor = []
@@ -183,6 +185,9 @@ class elmerWindowHandler():
             layout.addWidget(self._listview, stretch=1)
             self._eqWindow.setLayout(layout)
             self._pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            # create default solver settings
+            for idx in range(self._equationEditor[0].tabWidget.count()):
+                self._editNumericalMethods(idx, 0, False)
             self._eqWindow.show()
         else:
             self._eqWindow.show()
@@ -774,10 +779,11 @@ class elmerWindowHandler():
         self._materialLibrary.elmerDefs = self._elmerDefs
         self._materialLibrary.show()
 
-    def _editNumericalMethods(self, current, ids):
+    def _editNumericalMethods(self, current, ids, show=True):
         """Edit the solver specific properties\n
         current = tab-index\n
-        ids = id of the equation"""
+        ids = id of the equation\n
+        show = create window or not"""
 
         title = ""
         # get active tab in the currently opened equation set
@@ -817,7 +823,8 @@ class elmerWindowHandler():
                                             "Solver specific options")
                 break
 
-        spe.show()
+        if show:
+            spe.show()
 
     def _xmlMerge(self, path):
         """Merges all edf-xml files in the given directory into a temporary file\n
