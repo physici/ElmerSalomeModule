@@ -1,8 +1,4 @@
 import sys
-# required to get the Python 2 behavior of QT
-# see https://stackoverflow.com/a/21223060
-import sip
-sip.setapi('QVariant', 1)
 from PyQt4 import QtGui
 from PyQt4 import QtXml
 from PyQt4 import QtCore

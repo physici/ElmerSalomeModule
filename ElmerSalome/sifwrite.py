@@ -130,8 +130,7 @@ def write_sif(ewh):
     i_solver = -1
     count_solver = 0
     SolverList = []
-    for element in ewh._solverParameterEditor:
-        i_solver += 1
+    for i_solver, element in enumerate(ewh._solverParameterEditor):
         newSolver = SolverListItem()
         newSolver.Name = str(element.solverName)
         # Remark: why do we need to initialize here (see class definition for SolverListItem)?
@@ -169,7 +168,8 @@ def write_sif(ewh):
             if key in element.generalOptions.qhash:
                 addSifLine('  Variable = ', str(element.generalOptions.qhash[key].widget.text()).strip())                    
                 print('! ToDo: DOFs')
-            for key, value in element.generalOptions.qhash.iteritems():
+            for key in element.generalOptions.qhash.keys():
+                value = element.generalOptions.qhash[key]
                 if (str(element.solverName + '/Solver') in key) and not(any(s in key for s in ['Variable','Procedure'])): 
                     #print('  !' + key)
                     makeSifEntry(value)
@@ -235,7 +235,7 @@ def write_sif(ewh):
                         addSifLine('  Linear System Preconditioning = ', str(element.linearSystemPreconditioning.currentText()).strip())
                     addSifLine('  Linear System ILUT Tolerance = ', str(element.linearSystemILUTToleranceEdit.text()).strip())
                     addSifLineBool("  Linear System Abort Not Converged = ", element.linearSystemAbortWhenNotConvergedCheck.isChecked())
-                    addSifLine('  Linear System Residual Output = ', str(element.linearSystemResidualOutputEdit.text()).strip())
+                    addSifLine('  Linear System Residual Output = ', str(element.linearSystemResiduaOutputEdit.text()).strip())
                     addSifLine('  Linear System Precondition Recompute = ', str(element.linearSystemPreconditionRecomputeEdit.text()).strip())
                 elif element.linearSystemSolverMultigrid.isChecked():
                     addSifLine('  Linear System Solver = ', 'Multigrid');
