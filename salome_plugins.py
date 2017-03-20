@@ -173,7 +173,7 @@ def showInitialConditions(context):
 
 def createMesh(context):
     """Create mesh with ElmerGrid"""
-    global main, sp, smesh, salome
+    global main, sp, smesh, salome, subprocess
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.information(None, str(active_module),
@@ -201,8 +201,7 @@ def createMesh(context):
             fname = os.path.normpath(str(fname))
             path = os.path.dirname(fname)
             myMesh.ExportUNV(fname)
-            sp.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname,
-                                                                    path))
+            subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
             main.meshDirectory = path
 
 
