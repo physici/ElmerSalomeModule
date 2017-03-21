@@ -326,7 +326,7 @@ class SifWriter():
                     TargetBoundaries.append(objName)
             if len(TargetBoundaries) > 0:
                 for name in TargetBoundaries:
-                    self._addSifLine('BoundaryCondition ', str(x))
+                    self._addSifLine('Boundary Condition ', str(x))
     #                self._writeToSif('  Target Boundaries('+str(len(TargetBoundaries))+') = ' + bcStr )
     #                self._writeToSif('  Name = ' + '"'+str(bc.nameEdit.text()).strip()+'"')
                     self._writeToSif('  Name = ' + '"'+str(name).strip()+'"')
