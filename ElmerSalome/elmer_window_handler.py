@@ -32,7 +32,7 @@ path_edfs = path + os.sep + "edf" + os.sep
 main = None
 
 
-class elmerWindowHandler():
+class ElmerWindowHandler():
 
     def __init__(self):
         """Constructor"""
@@ -63,6 +63,8 @@ class elmerWindowHandler():
         self._icCurrent = 0
         self._xmlMerge(path_edfs)
         self._parent = self
+        
+        self._initGeneralSetup()
 
     def about(self):
         QtGui.QMessageBox.about(None, "About ELMER window handler",
@@ -152,7 +154,7 @@ class elmerWindowHandler():
         self._window = be
         return self._window
         
-    def initGeneralSetup(self):
+    def _initGeneralSetup(self):
         ge = generalsetup.GeneralSetup(path_forms)
         self._gsWindow = ge
         return ge
@@ -853,7 +855,10 @@ class elmerWindowHandler():
         self._elmerDefs.setContent(temp)
         
     def sif_write(self):
-        sifwrite.write_sif(self)
+        sfw = sifwrite.SifWriter(self)
+        sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
+        sfw.writeSif()
+        
 
 
 if __name__ == "__main__":

@@ -42,7 +42,7 @@ global main
 # be lost again,
 # see http://www.salome-platform.org/forum/forum_12/575675631/639739196
 if os.getenv("already_initialized", "0") != "1":
-    main = ewh.elmerWindowHandler()
+    main = ewh.ElmerWindowHandler()
 
 os.environ["already_initialized"] = "1"
 
