@@ -16,5 +16,5 @@ Plugin for SALOME platform to access Elmer functionality
 \SALOME-7.8.0-WIN64\MODULES\GUI\RELEASE\GUI_INSTALL\share\salome\plugins\gui\
 * or use  ~/.config/salome/Plugins
   
-##ToDo:
-*  check whether registration via system variables can be bypassed by using the env.bat batch file that starts SALOME
+##Usage:
+*  In the 'Mesh'-module of Salome, the plugin is accessable via the 'Tools'-menu.
