@@ -856,6 +856,11 @@ class ElmerWindowHandler():
         
     def sif_write(self):
         sfw = sifwrite.SifWriter(self)
+        if not self.meshDirectory:
+            d = str(QtGui.QFileDialog.getExistingDirectory(parent=None, caption="Select Directory"))
+        if not d:
+            return
+        self.meshDirectory = os.path.normpath(d)
         sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
         sfw.writeSif()
         
