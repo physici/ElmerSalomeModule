@@ -124,10 +124,18 @@ class SifWriter():
                 self._writeToSif('Body ' + str(count))
                 self._writeToSif('  ! Target Bodies(1) = TODO')
                 self._writeToSif('  Name = "' + objName + '"')
-                self._addSifLine('  Equation = ', str(properties.equationCombo.currentIndex()).strip())
-                self._addSifLine('  Material = ', str(properties.materialCombo.currentIndex()).strip())
-                self._addSifLine('  Body Force = ', str(properties.bodyForceCombo.currentIndex()).strip())
-                self._addSifLine('  Initial Condition = ', str(properties.initialConditionCombo.currentIndex()).strip())
+                ind = int(properties.equationCombo.currentIndex())
+                if ind > 0:
+                    self._addSifLine('  Equation = ', str(ind))
+                ind = int(properties.materialCombo.currentIndex())
+                if ind > 0:
+                    self._addSifLine('  Material = ', str(ind))
+                ind = int(properties.bodyForceCombo.currentIndex())
+                if ind > 0:
+                    self._addSifLine('  Body Force = ', str(ind))
+                ind = int(properties.initialConditionCombo.currentIndex())
+                if ind > 0:
+                    self._addSifLine('  Initial Condition = ', str(ind))
                 # use names instead of numbers
                 #_addSifLine('  Equation = ', '"'+str(properties.equation).strip()+'"')
                 #_addSifLine('  Material = ', '"'+str(properties.material).strip()+'"')
