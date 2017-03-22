@@ -235,7 +235,7 @@ class SifWriter():
                             self._addSifLine('  Linear System Preconditioning = ', str(element.linearSystemPreconditioning.currentText()).strip())
                         self._addSifLine('  Linear System ILUT Tolerance = ', str(element.linearSystemILUTToleranceEdit.text()).strip())
                         self._addSifLineBool("  Linear System Abort Not Converged = ", element.linearSystemAbortWhenNotConvergedCheck.isChecked())
-                        self._addSifLine('  Linear System Residual Output = ', str(element.linearSystemResiduaOutputEdit.text()).strip())
+                        self._addSifLine('  Linear System Residual Output = ', str(element.linearSystemResidualOutputEdit.text()).strip())
                         self._addSifLine('  Linear System Precondition Recompute = ', str(element.linearSystemPreconditionRecomputeEdit.text()).strip())
                     elif element.linearSystemSolverMultigrid.isChecked():
                         self._addSifLine('  Linear System Solver = ', 'Multigrid');
