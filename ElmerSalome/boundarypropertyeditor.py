@@ -13,13 +13,21 @@ from PyQt4 import uic
 
 
 class BoundaryPropertyEditor(QtGui.QDialog):
+    """Boundary Property base class"""
 
     # signal changed
     boundaryPropertyEditorApply = QtCore.pyqtSignal(QtGui.QDialog, str,
-                                                name="boundaryPropertyEditorApply")
+                                                    name="boundaryPropertyEditorApply")
 
     def __init__(self, path_forms):
-        """Constructor"""
+        """Constructor.
+
+        Args:
+        -----
+        path_forms: str
+            String containing the path to the ui-files defining the look of the
+            window.
+        """
         super(BoundaryPropertyEditor, self).__init__()
 
         uic.loadUi(path_forms + "boundarypropertyeditor.ui", self)

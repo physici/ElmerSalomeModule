@@ -15,9 +15,17 @@ class GeneralSetup(QtGui.QDialog):
     """Class that provides the General setup dialog and its functionality"""
 
     def __init__(self, path_forms):
-        """Constructor of dialog using the uic-loader"""
+        """Constructor.
+
+        Args:
+        -----
+        path_forms: str
+            String containing the path to the ui-files defining the look of the
+            window.
+        """
         super(GeneralSetup, self).__init__()
         uic.loadUi(path_forms + "generalsetup.ui", self)
+        
         self.acceptButton.clicked.connect(self.applyChanges)
 
     def applyChanges(self):

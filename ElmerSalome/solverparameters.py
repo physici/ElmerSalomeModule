@@ -15,7 +15,14 @@ class SolverParameterEditor(QtGui.QDialog):
     """Class that provides the Solver parameter editor and its functionality"""
 
     def __init__(self, path_forms):
-        """Constructor"""
+        """Constructor.
+
+        Args:
+        -----
+        path_forms: str
+            String containing the path to the ui-files defining the look of the
+            window.
+        """
         super(SolverParameterEditor, self).__init__()
         uic.loadUi(path_forms + "solverparameters.ui", self)
 
@@ -25,19 +32,13 @@ class SolverParameterEditor(QtGui.QDialog):
         self.useParasails.stateChanged.connect(self._parasailsStateChanged)
         self.useBoomerAMG.stateChanged.connect(self._boomerAMGStateChanged)
 
+        # public
         self.solverName = ""
         self.generalOptions = None
+
+        # private
         self._projectIO = None
-
         self._hypreStateChanged(0)
-
-    def appendToProject(self):
-        """ToDo"""
-        return
-
-    def readFromProject(self):
-        """ToDo"""
-        return
 
     def _hypreStateChanged(self, integer):
         if(self.useHypre.isChecked()):

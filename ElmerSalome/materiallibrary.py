@@ -12,8 +12,12 @@ class MaterialLibrary(QtGui.QDialog):
     def __init__(self, path_forms, path_edfs):
         """Constructor
 
-        :path_forms: path to ui-interface directory
-        :path_edfs: path to the xml-files directory
+        Args:
+        -----
+        path_forms: str
+            path to ui-interface directory
+        path_edfs: str
+            path to the xml-files directory
         """
         super(MaterialLibrary, self).__init__()
 

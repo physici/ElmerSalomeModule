@@ -11,21 +11,28 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 from PyQt4 import uic
 
-import elmer_window_handler
-
 
 class BodyPropertyEditor(QtGui.QDialog):
+    """Body property editor base class"""
 
     # signal changed
     bodyPropertyEditorApply = QtCore.pyqtSignal(QtGui.QDialog, str,
                                                 name="bodyPropertyEditorApply")
 
     def __init__(self, path_forms):
-        """Constructor"""
+        """Constructor.
+
+        Args:
+        -----
+        path_forms: str
+            String containing the path to the ui-files defining the look of the
+            window.
+        """
         super(BodyPropertyEditor, self).__init__()
 
         uic.loadUi(path_forms + "bodypropertyeditor.ui", self)
 
+        # public
         self.material = None
         self.initial = None
         self.force = None

@@ -146,7 +146,17 @@ class DynamicEditor(QtGui.QWidget):
         self._param = None
 
     def setupTabs(self, elmerDefs, Section, ID):
-        """Creates the tabs of the dynamic widget according to the elmerDefs"""
+        """Creates the tabs of the dynamic widget according to the elmerDefs
+
+        Args:
+        -----
+        elmerDefs: QDomDocument
+            contents of the Elmder efs files in xml-format
+        Section: str
+            Type of base layout
+        ID: int
+            ID of the dynamiceditor-instance        
+        """
         self.ID = ID
         self.qhash.clear()
 
@@ -363,7 +373,13 @@ class DynamicEditor(QtGui.QWidget):
         self.setWindowTitle(Section)
 
     def _lSlot(self, state):
-        """Event when CheckBox changed"""
+        """Event when CheckBox changed
+
+        Args:
+        -----
+        state: bool
+            check state of the CheckBox
+        """
         self._param = QtXml.QDomElement()
         if sip.getapi('QVariant') == 1:
             qs = str(self.sender().property("dom address").toPyObject())
@@ -400,7 +416,13 @@ class DynamicEditor(QtGui.QWidget):
             self._param = self._param.nextSiblingElement("Deactivate")
 
     def _textChangedSlot(self, text):
-        """Event when TextBox changed"""
+        """Event when TextBox changed
+
+        Args:
+        -----
+        text: str
+            new contents of text box
+        """
         self._param = QtXml.QDomElement()
         if sip.getapi('QVariant') == 1:
             qs = str(self.sender().property("dom address").toPyObject())
@@ -426,7 +448,11 @@ class DynamicEditor(QtGui.QWidget):
             self._param = self._param.nextSiblingElement("Activate")
 
     def _comboSlot(self, select):
-        """Event when comboBox changend"""
+        """Event when comboBox changend
+
+        select: int
+            index of the selection
+        """
         select = self.sender().itemText(select)
         if sip.getapi('QVariant') == 1:
             qs = str(self.sender().property("dom address").toPyObject())
