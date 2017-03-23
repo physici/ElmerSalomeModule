@@ -7,7 +7,10 @@ Created on Sat Sep  3 14:35:56 2016
 Salome Plugin-manager file for declaration of Elmer functionality to Salome
 """
 
-from PyQt4 import QtGui
+try:
+    from PyQt4 import QtGui
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
 
 import salome_pluginsmanager as sp
 import smesh
@@ -59,7 +62,7 @@ def about(context):
         Context variable provided by the Salome environment
     """
 
-    global main
+    global main, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -84,7 +87,7 @@ def generalSetup(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main
+    global main, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -104,7 +107,7 @@ def showEquations(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main
+    global main, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -124,7 +127,7 @@ def showMaterials(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main
+    global main, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -145,7 +148,7 @@ def defineElementProperties(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp
+    global main, sp, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -185,7 +188,7 @@ def showBodyForces(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp
+    global main, sp, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -205,7 +208,7 @@ def showBoundaryConditions(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp
+    global main, sp, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -225,7 +228,7 @@ def showInitialConditions(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp
+    global main, sp, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -247,7 +250,7 @@ def createMesh(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp, smesh, salome, subprocess
+    global main, sp, smesh, salome, subprocess, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -293,7 +296,7 @@ def writeSif(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main
+    global main, QtGui
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
