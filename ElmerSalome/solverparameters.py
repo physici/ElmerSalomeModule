@@ -6,9 +6,12 @@ Created on Sat Sep 24 19:51:49 2016
 
 Solver parameter editor class
 """
-
-from PyQt4 import QtGui
-from PyQt4 import uic
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import uic
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import uic
 
 
 class SolverParameterEditor(QtGui.QDialog):

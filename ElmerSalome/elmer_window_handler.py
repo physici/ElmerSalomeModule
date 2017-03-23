@@ -4,10 +4,14 @@ Created on Sat Sep  3 14:31:15 2016
 
 @author: Rainer Jacob
 """
-
-from PyQt4 import QtGui
-from PyQt4 import QtXml
-from PyQt4 import QtCore
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import QtXml
+    from PyQt4 import QtCore
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtXml
+    from PyQt5 import QtCore
 
 import os
 import os.path
@@ -1047,13 +1051,13 @@ class ElmerWindowHandler():
 
     def _xmlMerge(self, path):
         """Merges all edf-xml files in the given directory into a temporary
-        file 
-        
+        file
+
         Args:
         -----
         path: str
             path to the Elmer xml-files configuration files
-        
+
         """
         # create a temporary file
         mybuf = tempfile.TemporaryFile()

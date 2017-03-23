@@ -6,9 +6,12 @@ Created on Sat Sep 10 20:26:27 2016
 
 General setup class
 """
-
-from PyQt4 import QtGui
-from PyQt4 import uic
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import uic
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import uic
 
 
 class GeneralSetup(QtGui.QDialog):
@@ -25,7 +28,7 @@ class GeneralSetup(QtGui.QDialog):
         """
         super(GeneralSetup, self).__init__()
         uic.loadUi(path_forms + "generalsetup.ui", self)
-        
+
         self.acceptButton.clicked.connect(self.applyChanges)
 
     def applyChanges(self):

@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from PyQt4 import QtGui
-from PyQt4 import QtXml
-from PyQt4 import QtCore
-from PyQt4 import uic
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import QtXml
+    from PyQt4 import QtCore
+    from PyQt4 import uic
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtXml
+    from PyQt5 import QtCore
+    from PyQt5 import uic
 
 
 class MaterialLibrary(QtGui.QDialog):

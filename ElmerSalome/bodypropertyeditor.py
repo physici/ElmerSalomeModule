@@ -6,10 +6,14 @@ Created on Sun Oct 16 15:53:26 2016
 
 Widget that allows setting of body properties
 """
-
-from PyQt4 import QtGui
-from PyQt4 import QtCore
-from PyQt4 import uic
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import QtCore
+    from PyQt4 import uic
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtCore
+    from PyQt5 import uic
 
 
 class BodyPropertyEditor(QtGui.QDialog):

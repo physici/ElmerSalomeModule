@@ -7,9 +7,14 @@ Created on Sun Oct 16 16:49:42 2016
 Boundary property editor class
 """
 
-from PyQt4 import QtGui
-from PyQt4 import QtCore
-from PyQt4 import uic
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import QtCore
+    from PyQt4 import uic
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtCore
+    from PyQt5 import uic
 
 
 class BoundaryPropertyEditor(QtGui.QDialog):

@@ -11,10 +11,18 @@ Class changes appearance according to provide edf-xml document
 # required to get the Python 2 behavior of QT
 # see https://stackoverflow.com/a/21223060
 import sip
-from PyQt4 import QtGui
-from PyQt4 import QtXml
-from PyQt4 import QtCore
-import sys
+try:
+    from PyQt4 import QtGui
+    from PyQt4.QtGui import QFont
+    from PyQt4.QtGui import QFontMetrics
+    from PyQt4 import QtXml
+    from PyQt4 import QtCore
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5.QtGui import QFont
+    from PyQt5.QtGui import QFontMetrics
+    from PyQt5 import QtXml
+    from PyQt5 import QtCore
 
 
 class MatTypes():
@@ -225,7 +233,7 @@ class DynamicEditor(QtGui.QWidget):
                     elif(widget_type == "TextEdit"):
                         textEdit = QtGui.QTextEdit()
                         currentFont = textEdit.currentFont()
-                        fontMetrics = QtGui.QFontMetrics(currentFont)
+                        fontMetrics = QFontMetrics(currentFont)
                         fontHeight = fontMetrics.height()
                         textEdit.setMinimumHeight(5*fontHeight)
                         textEdit.setMaximumHeight(8*fontHeight)
@@ -259,7 +267,7 @@ class DynamicEditor(QtGui.QWidget):
 
                     elif(widget_type == "Label"):
                         label = QtGui.QLabel()
-                        font = QtGui.QFont()
+                        font = QFont()
                         font.setBold(True)
                         font.setUnderline(True)
                         label.setFont(font)
