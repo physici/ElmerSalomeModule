@@ -16,6 +16,7 @@ import sys
 import os
 import subprocess
 
+# %% setup
 plugin_path = ""
 # add SALOME_PLUGIN_PATH to Python environment for easier module import
 if (os.environ.get("SALOME_PLUGINS_PATH") is not None):
@@ -47,8 +48,17 @@ if os.getenv("already_initialized", "0") != "1":
 os.environ["already_initialized"] = "1"
 
 
-# define about Function
+# %% define about Function
 def about(context):
+    """Shows an info dialog for the plugin. May contain additional information
+    in the future.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
+
     global main
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
@@ -65,8 +75,15 @@ def about(context):
     return
 
 
-# define generalSetup function
+# %% generalSetup
 def generalSetup(context):
+    """Shows the general setup dialog for Elmer.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
@@ -78,8 +95,15 @@ def generalSetup(context):
     main.showGeneralSetup()
 
 
+# %% equation definition
 def showEquations(context):
-    """Make a new equation set and call the dynamic editor"""
+    """Shows the window for the definition of equations.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
@@ -91,8 +115,15 @@ def showEquations(context):
     main.showAddEquation()
 
 
+# %% material defintion
 def showMaterials(context):
-    """Make a new material set and call the dynamic editor"""
+    """Shows the window for the definition of materials.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
@@ -104,21 +135,31 @@ def showMaterials(context):
     main.showAddMaterial()
 
 
+# %% element properties
 def defineElementProperties(context):
-    """Open dialog to set element properties"""
+    """Context sensitive window for setting the element properties. Faces and
+    bodies will create different windows.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main, sp
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
-    # check shape, should be solid/body
+    # get selection
     selCount = sp.sg.SelectedCount()
     if selCount == 0:
         QtGui.QMessageBox.information(None, str(active_module),
                                 "Nothing selected. Please select a volume/face or group of.")
         return
+    # check shape, should be volume or face
     else:
         objID = sp.sg.getSelected(0)
         salomeObj = sp.salome.myStudy.FindObjectID(objID)
@@ -135,9 +176,17 @@ def defineElementProperties(context):
             return
 
 
+# %% body forces
 def showBodyForces(context):
-    """Make a new body force set and call the dynamic editor"""
+    """Shows the window for the definition of body forces.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main, sp
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.information(None, str(active_module),
@@ -147,9 +196,17 @@ def showBodyForces(context):
     main.showAddBodyForce()
 
 
+# %% boundary conditions
 def showBoundaryConditions(context):
-    """Make a new boundary condition set and call the dynamic editor"""
+    """Shows the window for the definition of boundary conditions.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main, sp
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.information(None, str(active_module),
@@ -159,9 +216,17 @@ def showBoundaryConditions(context):
     main.showAddBoundaryCondition()
 
 
+# %% initial conditions
 def showInitialConditions(context):
-    """Make a new initial condition set and call the dynamic editor"""
+    """Shows the window for the definition of initial conditions.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main, sp
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.information(None, str(active_module),
@@ -171,20 +236,32 @@ def showInitialConditions(context):
     main.showAddInitialCondition()
 
 
+# %% mesh creation
 def createMesh(context):
-    """Create mesh with ElmerGrid"""
+    """Context sensitive window for setting for mesh export. Only a mesh-node
+    in the object tree of salome will create the correct output - unv-mesh and
+    ElmerGrid mesh.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
     global main, sp, smesh, salome, subprocess
+    # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
         QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
 
+    # get selection
     selCount = sp.sg.SelectedCount()
     if selCount == 0:
         QtGui.QMessageBox.warning(None, str(active_module),
                                   "Nothing selected. Please select a mesh.")
         return
+    # check if selection == mesh
     else:
         objID = sp.sg.getSelected(0)
         ref = salome.IDToObject(objID)
@@ -194,9 +271,11 @@ def createMesh(context):
             QtGui.QMessageBox.warning(None, str(active_module),
                                       "Selection is not a mesh.")
             return
+        # get a filename for saving the unv-mesh
         title = 'Export mesh to file'
         fname = QtGui.QFileDialog.getSaveFileName(parent=None, caption=title,
                                                   filter='Mesh files (*.unv)')
+        # call to ElmerGrid for converting the unv-file to Elmer-readable file
         if fname:
             fname = os.path.normpath(str(fname))
             path = os.path.dirname(fname)
@@ -205,10 +284,26 @@ def createMesh(context):
             main.meshDirectory = path
 
 
+# %% sif generator
 def writeSif(context):
+    """Calls the sif generator.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
+    global main
+    # get active module and check if SMESH
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.information(None, str(active_module),
+                                "Functionality is only provided in mesh module.")
+        return
+
     main.sif_write()
 
-# declare ShowWindow-Function to plugin manager
+# %% declare Elmer-Functions to plugin manager
 sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
 sp.AddFunction('ELMER/General settings', 'General simulation settings', generalSetup)
 sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
