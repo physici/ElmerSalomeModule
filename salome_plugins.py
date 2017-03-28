@@ -18,6 +18,7 @@ import salome
 import sys
 import os
 import subprocess
+import pdb
 
 # %% setup
 plugin_path = ""
@@ -250,7 +251,7 @@ def createMesh(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp, smesh, salome, subprocess, QtGui
+    global main, sp, smesh, salome, subprocess, QtGui, pdb
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -278,10 +279,21 @@ def createMesh(context):
         title = 'Export mesh to file'
         fname = QtGui.QFileDialog.getSaveFileName(parent=None, caption=title,
                                                   filter='Mesh files (*.unv)')
+        
+        # Salome 8.2 behavior
+        if isinstance(fname, tuple):
+            fname = fname[0]
+        
+        # pdb.set_trace()
         # call to ElmerGrid for converting the unv-file to Elmer-readable file
         if fname:
             fname = os.path.normpath(str(fname))
             path = os.path.dirname(fname)
+            # Linux does not add file ending automatically
+            if not fname.endswith('.unv'):
+                fname = '{}.unv'.format(fname)
+            if os.path.exists(fname):
+                os.remove(fname)
             myMesh.ExportUNV(fname)
             subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
             main.meshDirectory = path
