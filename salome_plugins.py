@@ -295,7 +295,13 @@ def createMesh(context):
             if os.path.exists(fname):
                 os.remove(fname)
             myMesh.ExportUNV(fname)
-            subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
+            try:
+                subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
+            except OSError:
+                QtGui.QMessageBox.Critical(None, "File IO error", "fname: {}, path: {}".format(fname, path))
+                print fname
+                print path
+                return
             main.meshDirectory = path
 
 
