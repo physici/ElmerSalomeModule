@@ -253,7 +253,7 @@ def createMesh(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp, smesh, salome, subprocess, QtGui, pdb
+    global main, sp, smesh, salome, subprocess, QtGui, pdb, spawn
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -298,7 +298,7 @@ def createMesh(context):
                 os.remove(fname)
             myMesh.ExportUNV(fname)
             prgm = spawn.find_executable('elmergrid')
-            if prgm not None:
+            prgm != None:            
                 try:
                     subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
                     main.meshDirectory = path
