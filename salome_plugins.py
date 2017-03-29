@@ -298,7 +298,7 @@ def createMesh(context):
             try:
                 subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
             except OSError:
-                QtGui.QMessageBox.Critical(None, "File IO error", "fname: {}, path: {}".format(fname, path))
+                QtGui.QMessageBox.about(None, "File IO error", "fname: {}, path: {}".format(fname, path))
                 print fname
                 print path
                 return
