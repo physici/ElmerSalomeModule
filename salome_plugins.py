@@ -12,6 +12,8 @@ try:
 except ImportError:
     from PyQt5 import QtWidgets as QtGui
 
+from distutils import spawn
+
 import salome_pluginsmanager as sp
 import smesh
 import salome
@@ -295,14 +297,21 @@ def createMesh(context):
             if os.path.exists(fname):
                 os.remove(fname)
             myMesh.ExportUNV(fname)
-            try:
-                subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
-            except OSError:
-                QtGui.QMessageBox.about(None, "File IO error", "fname: {}, path: {}".format(fname, path))
-                print fname
-                print path
+            exec = spawn.find_executable('elmergrid')
+            if exec not None:
+                try:
+                    subprocess.Popen("ELMERGRID 8 2 {0} -autoclean -out {1}".format(fname, path))
+                    main.meshDirectory = path
+                except OSError:
+                    QtGui.QMessageBox.about(None, "File IO error", "fname: {}, path: {}".format(fname, path))
+                    print fname
+                    print path
+                    return
+            else:
+                QtGui.QMessageBox.warning(None, str(active_module),
+                                          "Elmer executable not found. Check system variables.")
                 return
-            main.meshDirectory = path
+                
 
 
 # %% sif generator
