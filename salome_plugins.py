@@ -300,7 +300,9 @@ def createMesh(context):
             prgm = spawn.find_executable('ElmerGrid')
             if prgm != None:            
                 try:
-                    subprocess.Popen("ElmerGrid 8 2 {0} -autoclean -out {1}".format(fname, path))
+                    # on Linux shell=True required,
+                    # see http://stackoverflow.com/a/18962815/4141279
+                    subprocess.Popen("ElmerGrid 8 2 {0} -autoclean -out {1}".format(fname, path), shell=True)
                     main.meshDirectory = path
                 except OSError:
                     QtGui.QMessageBox.about(None, "File IO error", "fname: {}, path: {}".format(fname, path))
