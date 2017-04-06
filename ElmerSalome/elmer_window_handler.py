@@ -45,6 +45,7 @@ class ElmerWindowHandler():
         """Constructor"""
         # public fields
         self.meshDirectory = ''
+        self.sifFile = ''
         # private fields
         self._equationEditor = []  # stores the equations sets
         self._materialEditor = []  # stores the defined materials
@@ -357,7 +358,13 @@ class ElmerWindowHandler():
         self.meshDirectory = os.path.normpath(d)
         sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
         # generate sif file
-        sfw.writeSif()
+        try:
+            sfw.writeSif()
+            self.sifFile = self.meshDirectory + os.sep + 'simulation.sif'
+        except:
+            QtGui.QMessageBox.warning(None, 'Error',
+                                          "An error occured while writing the sif-file.")
+            return
 
     def _initGeneralSetup(self):
         """Load the default general settings.

@@ -314,6 +314,58 @@ def createMesh(context):
                                           "Elmer executable not found. Check system variables.")
                 return
                 
+# %% mesh creation
+def startSolver(context):
+    """Calls the ElmerSolver. Checks if a sif-file is present and whether 
+    multiprocessing is available.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
+    global main, sp, smesh, salome, subprocess, QtGui, pdb, spawn
+    # get active module and check if SMESH
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.information(None, str(active_module),
+                                "Functionality is only provided in mesh module.")
+        return
+
+    # get sif-File and mesh-File
+    sifFile = main.sifFile
+    meshDirectory = main.meshDirectory
+    if sifFile == '' or meshDirectory == '':
+        QtGui.QMessageBox.warning(None, str(active_module),
+                                  "Not sif-File or mesh-file present in memory. Write sif or create mesh.")
+        return
+    else:
+        # check if ElmerSolver or mpiexec is known
+        elmslv = spawn.find_executable('ElmerSolver')
+        mpislv = spawn.find_executable('mpiexec')
+        if elmslv == None:
+            QtGui.QMessageBox.warning(None, str(active_module),
+                                      "No ElmerSolver-executalbe found.")
+            return            
+        else:
+            # do multiprocessing if available
+            if mpislv != None:
+                import multiprocessing
+                ncount = multiprocessing.cpu_count()
+                # split mesh
+                # on Linux shell=True required,
+                # see http://stackoverflow.com/a/18962815/4141279
+                subprocess.Popen("ElmerGrid 2 2 {0} -metis {1}".format(meshDirectory, ncount), shell=True)
+                # change dir
+                path = os.path.dirname(sifFile)
+                os.chdir(path)
+                # create setup file
+                fs = open('ELMERSOLVER_STARTINFO', mode='w')
+                fileName = os.path.basename(sifFile)
+                fs.writelines([filename, '\n', '1'])
+                fs.close()
+                # call ElmerSolver via mpiexec
+                subprocess.Popen("mpiexec -n {0} ElmerSolver_mpi".format(ncount), shell=True)
 
 
 # %% sif generator
