@@ -353,9 +353,9 @@ class ElmerWindowHandler():
         # check if mesh export directory has been defined
         if not self.meshDirectory:
             d = str(QtGui.QFileDialog.getExistingDirectory(parent=None, caption="Select Directory"))
-        if not d:
-            return
-        self.meshDirectory = os.path.normpath(d)
+            if not d:
+                return
+            self.meshDirectory = os.path.normpath(d)
         sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
         # generate sif file
         try:

@@ -9,7 +9,7 @@ Plugin for SALOME platform to access Elmer functionality
 * create a plugin directory in the root path of SALOME or somewhere convenient, if not already using one
 * copy ElmerSalome-directory into the plugin directory
 * copy the salome_plugins.py-file in the plugin directory or modify the existing file 
-* register the directory via the SALOME_PLUGIN_PATH system variable
+* register the directory via the SALOME_PLUGINS_PATH system variable
 
 ##Installation with standard Salome-directories:
 * put everything int (e.g Salome 7.8 on win64):

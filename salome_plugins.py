@@ -351,6 +351,7 @@ def startSolver(context):
             # do multiprocessing if available
             if mpislv != None:
                 import multiprocessing
+                from threading import Thread
                 ncount = multiprocessing.cpu_count()
                 # split mesh
                 # on Linux shell=True required,
@@ -362,10 +363,61 @@ def startSolver(context):
                 # create setup file
                 fs = open('ELMERSOLVER_STARTINFO', mode='w')
                 fileName = os.path.basename(sifFile)
-                fs.writelines([filename, '\n', '1'])
+                fs.writelines([fileNamel, '\n', '1'])
                 fs.close()
-                # call ElmerSolver via mpiexec
-                subprocess.Popen("mpiexec -n {0} ElmerSolver_mpi".format(ncount), shell=True)
+                # call ElmerSolver via mpiexec via a separate thread
+                def solve():
+                    logfile = open('simlog.txt', 'w')
+                    proc = subprocess.Popen("mpiexec -n {0} ElmerSolver_mpi".format(ncount),
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            universal_newlines=True, shell=True)
+                    # Poll process for new output until finished
+                    while True:
+                        nextline = proc.stdout.readline()
+                        if nextline == '' and proc.poll() is not None:
+                            break
+                        sys.stdout.write(nextline)
+                        sys.stdout.flush()
+                        logfile.write(nextline)
+                
+                    output = proc.communicate()[0]
+                    exitCode = proc.returncode
+                    logfile.close()
+                    print 'Done'   
+                    
+                print 'starting'
+                sys.stdout.flush()
+                t = Thread(target=solve)
+                t.start()
+            # single core operation
+            else:
+                from threading import Thread
+                path = os.path.dirname(sifFile)
+                os.chdir(path)
+                # call ElmerSolver via mpiexec via a separate thread
+                def solve():
+                    logfile = open('simlog.txt', 'w')
+                    proc = subprocess.Popen("ElmerSolver {}".format(sifFile),
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            universal_newlines=True, shell=True)
+                    # Poll process for new output until finished
+                    while True:
+                        nextline = proc.stdout.readline()
+                        if nextline == '' and proc.poll() is not None:
+                            break
+                        sys.stdout.write(nextline)
+                        sys.stdout.flush()
+                        logfile.write(nextline)
+                
+                    output = proc.communicate()[0]
+                    exitCode = proc.returncode
+                    logfile.close()
+                    print 'Done'   
+                    
+                print 'starting'
+                sys.stdout.flush()
+                t = Thread(target=solve)
+                t.start()
 
 
 # %% sif generator
@@ -398,3 +450,4 @@ sp.AddFunction('ELMER/Initial conditions', 'Initial conditions', showInitialCond
 sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineElementProperties)
 sp.AddFunction('ELMER/Create mesh', 'Mesh creation', createMesh)
 sp.AddFunction('ELMER/Write Solver Input File', 'Write sif', writeSif)
+sp.AddFunction('ELMER/Start Solver', 'Start solver', startSolver)
