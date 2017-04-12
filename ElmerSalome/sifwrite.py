@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Matthias Zenker
+
+Sif writer class
+"""
+
 class SolverListItem:
     Name = ''
     Equations = []
@@ -6,6 +15,7 @@ class SolverListItem:
 
 
 class SifWriter():
+    """SifWriter"""
 
     def __init__(self, ewh):
         # public
@@ -180,7 +190,6 @@ class SifWriter():
                 key = str('/'+element.solverName+'/Solver/Variable/'+str(i_solver))
                 if key in element.generalOptions.qhash:
                     self._addSifLine('  Variable = ', str(element.generalOptions.qhash[key].widget.text()).strip())
-                    self._writeToSif('! ToDo: DOFs')
                 for key in element.generalOptions.qhash.keys():
                     value = element.generalOptions.qhash[key]
                     if (str(element.solverName + '/Solver') in key) and not(any(s in key for s in ['Variable','Procedure'])):
@@ -291,6 +300,8 @@ class SifWriter():
             idx += 1
             self._writeToSif('Equation ' + str(idx))
             self._writeToSif('  Name = "' + str(element.nameEdit.text()).strip() + '"')
+			for key, value in element.qhash.iteritems():
+                self._makeSifEntry(value)
             activeSolvers = []
             N_activeSolvers = 0
             for sol in SolverList:

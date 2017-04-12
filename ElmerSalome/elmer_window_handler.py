@@ -3,6 +3,8 @@
 Created on Sat Sep  3 14:31:15 2016
 
 @author: Rainer Jacob
+
+Main class for Elmer functionality
 """
 try:
     from PyQt4 import QtGui
@@ -46,10 +48,11 @@ class ElmerWindowHandler():
         # public fields
         self.meshDirectory = ''
         self.sifFile = ''
+        self.gsWindow = None
         # private fields
         self._equationEditor = []  # stores the equations sets
         self._materialEditor = []  # stores the defined materials
-        self._solverParameterEditor = []  # stores the specific solver settings
+        self.solverParameterEditor = []  # stores the specific solver settings
         self._bodyForceEditor = []  # stores the body forces
         self._initialConditionEditor = []  # stores the initial conditions
         self._boundaryConditionEditor = []  # stores the boundary conditions
@@ -64,7 +67,6 @@ class ElmerWindowHandler():
         self._bfWindow = None
         self._bcWindow = None
         self._icWindow = None
-        self._gsWindow = None
         self._matCurrent = 0
         self._eqCurrent = 0
         self._bfCurrent = 0
@@ -199,11 +201,11 @@ class ElmerWindowHandler():
 
         Return:
         -------
-        _gsWindow: GeneralSetup-class
+        gsWindow: GeneralSetup-class
             Window for the general settings
         """
-        self._gsWindow.show()
-        return self._gsWindow
+        self.gsWindow.show()
+        return self.gsWindow
 
     def showSolverParametersEditor(self):
         """Show Solver settings window
@@ -216,8 +218,13 @@ class ElmerWindowHandler():
         sp = solverparameters.SolverParameterEditor(path_forms)
         return sp
 
-    def showAddEquation(self):
+    def showAddEquation(self, visible=True):
         """Show Equation settings window
+		
+		Args:
+		-----
+		visible: bool, optional
+			show equation window or prevent drawing
 
         Return:
         -------
@@ -239,7 +246,8 @@ class ElmerWindowHandler():
             # create default solver settings
             for idx in range(self._equationEditor[0].tabWidget.count()):
                 self._editNumericalMethods(idx, 0, False)
-            self._eqWindow.show()
+			if visible:
+				self._eqWindow.show()
         else:
             self._eqWindow.show()
 
@@ -371,11 +379,11 @@ class ElmerWindowHandler():
 
         Return:
         -------
-        _gsWindow: GeneralSetup-class
+        gsWindow: GeneralSetup-class
             Window for the general settings
         """
         ge = generalsetup.GeneralSetup(path_forms)
-        self._gsWindow = ge
+        self.gsWindow = ge
         return ge
 
     def _boundaryPropertyChanged(self, boundaryPropertyEditor, name):
@@ -1028,16 +1036,16 @@ class ElmerWindowHandler():
             return
 
         # if tab is not yet in list, resize list and copy previous items
-        if(current >= len(self._solverParameterEditor)):
+        if(current >= len(self.solverParameterEditor)):
             tmp = (current + 1) * [None]
-            for idx, element in enumerate(self._solverParameterEditor):
+            for idx, element in enumerate(self.solverParameterEditor):
                 tmp[idx] = element
-            self._solverParameterEditor = tmp
+            self.solverParameterEditor = tmp
         # create a new instane of the Solver settings and put it into storage
-        if not self._solverParameterEditor[current]:
-            self._solverParameterEditor[current] = solverparameters.SolverParameterEditor(path_forms)
+        if not self.solverParameterEditor[current]:
+            self.solverParameterEditor[current] = solverparameters.SolverParameterEditor(path_forms)
 
-        spe = self._solverParameterEditor[current]
+        spe = self.solverParameterEditor[current]
         spe.setWindowTitle("Solver control for {}".format(title))
         spe.solverName = title
 

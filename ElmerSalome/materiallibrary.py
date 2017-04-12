@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Created on Sat Sep  3 14:31:15 2016
 
+@author: Rainer Jacob
+
+Material library class
+"""
 try:
     from PyQt4 import QtGui
     from PyQt4 import QtXml

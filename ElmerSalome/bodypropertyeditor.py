@@ -4,7 +4,7 @@ Created on Sun Oct 16 15:53:26 2016
 
 @author: Rainer Jacob
 
-Widget that allows setting of body properties
+Body property editor class
 """
 try:
     from PyQt4 import QtGui
