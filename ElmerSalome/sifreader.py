@@ -6,7 +6,15 @@ Created on Wed Apr 12 07:51:36 2017
 
 Sif reader class
 """
-
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import QtXml
+    from PyQt4 import QtCore
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtXml
+    from PyQt5 import QtCore
+import pdb
 
 class SifReader():
     """SifReader"""
@@ -33,7 +41,8 @@ class SifReader():
         path: str
             path to the sif-file
         """
-
+        pdb.set_trace()
+        
         # read file and extract the blocks
         fs = open(path)
         data = fs.read()
@@ -83,6 +92,13 @@ class SifReader():
         for idx, element in enumerate(self._ewh.solverParameterEditor):
             self._solvIds.update({element.solverName: idx})
 
+        # apply solver settings
+        for block in solvers:
+            self._solvers(block)
+            
+        for block in equations:
+            self._equation(block)
+
     def _changeSettings(self, parameter, value):
         """Change settings of hashed parameter in element.
 
@@ -93,27 +109,53 @@ class SifReader():
         value: str
             new value of the parameter
         """
-
-        widgetType = parameter.elem.attribute('Widget', 'Edit')
-        if widgetType == 'Edit':
-            parameter.widget.setText(value)
-        elif widgetType == 'TextEdit':
-            sifValue = parameter.widget.toPlainText()
+        if isinstance(parameter, QtGui.QLineEdit):
+            parameter.setText(value)
+        elif isinstance(parameter, QtGui.QTextEdit):
+            sifValue = parameter.toPlainText()
             sifValue = sifValue + value + '\n'
-            parameter.widget.setText(sifValue)
-        elif widgetType == 'Combo':
-            idx = parameter.widget.findText(value)
-            parameter.widget.setCurrentIndex(idx)
-        elif widgetType == 'CheckBox':
-            parameter.widget.setChecked(value == 'True')
+            parameter.setText(sifValue)
+        elif isinstance(parameter, QtGui.QComboBox):
+            idx = parameter.findText(value)
+            parameter.setCurrentIndex(idx)
+        elif isinstance(parameter, QtGui.QCheckBox):
+            parameter.setChecked(value == 'True')
 
+    def _equation(self, block):
+        """Change settings of the equation
+        
+        Args:
+        ----
+        block: str
+            String containing of the given equation
+        """
+        
+        data = block.split('\n')
+        
+        # get equation set
+        sifID = data.pop(0).split(' ')[1]
+        if len(self._ewh.equationEditor) < sifID:
+            self._ewh.pdeEditorFinishedSlot(3, sifID - 1)
+        eq = self._ewh.equationEditor[sifID - 1]
+        
+        # set name
+        name = data.pop(0).split('=')[1].strip()
+        eq.nameEdit.setText(name)
+        
+        # set active solver
+        sifID = data.pop(0).split('=')[1].strip()
+        name = self._sifIds[sifID]
+        key = '/' + name + '/Equation/Active/' + str(eq.ID)
+        eq.qhash[key].widget.setChecked(True)
+        
+        
     def _solvers(self, block):
         """Change settings of the solver.
 
         Args:
         -----
         block: str
-            String containg the settings of the given equation
+            String containing the settings of the given solver
         """
 
         data = block.split('\n')
@@ -121,7 +163,7 @@ class SifReader():
         # mapping of solver name and ID as in sif-file
         sifID = data.pop(0).split(' ')[1]
         name = data.pop(0).split('=')[1].strip()
-        self._sifIds.update({name: sifID})
+        self._sifIds.update({sifID: name})
 
         # get the solver from the solver collection
         idx = self._solvIds[name]
@@ -130,8 +172,11 @@ class SifReader():
         procedure = data.pop(0).split('=')[1].strip()
         variable = data.pop(0).split('=')[1].strip()
 
+        # general options
         while data:
             key, value = data.pop(0).split('=')
+            key = key.strip()
+            value = value.strip()
             if 'Exec' in key:
                 if value == 'Always':
                     element.execAlways.setChecked(True)
@@ -148,11 +193,80 @@ class SifReader():
                 break
             key = '/{}/Solver/{}'.format(name, key)
             parameter = element.generalOptions.qhash[key]
-            self._changeSettings(parameter, value)
+            self._changeSettings(parameter.widget, value)
 
         if len(data) == 0:
             return
 
+        keys = {'Stabilize': element.stabilizeCheck,
+                'Bubbles': element.bubblesCheck,
+                'Lumped Mass Matrix': element.lumpedMassCheck,
+                'Optimize Bandwidth': element.optimizeBandwidthCheck,
+                'Steady State Convergence Tolerance': element.steadyStateConvergenceToleranceEdit,
+                'Steady State Convergence Measure': element.steadyStateConvergenceMeasureCombo,
+                'Nonlinear System Convergence Tolerance': element.nonlinSystemConvergenceToleranceEdit,
+                'Nonlinear System Max Iterations': element.nonlinSystemMaxIterationEdit,
+                'Nonlinear System Relaxation Factor': element.nonlinSystemRelaxationFactorEdit,
+                'Nonlinear System Convergence Measure': element.nonlinSystemConvergenceMeasureCombo,
+                'Nonlinear System Newton After Iterations': element.nonlinSystemNewtonAfterIterEdit,
+                'Nonlinear System Newton After Tolerance': element.nonlinSystemNewtonAfterTolEdit,
+                'Linear System Direct Method': element.linearSystemDirectMethod,
+                'Linear System Iterative Method': element.linearSystemIterativeMethod,
+                'Linear System Max Iterations': element.linearSystemMaxIterationsEdit,
+                'Linear System Convergence Tolerance': element.linearSystemConvergenceToleranceEdit,
+                'BiCGstabl polynomial degree': element.linearSystemBiCGstablPolDeg,
+                'Linear System Preconditioning': element.linearSystemPreconditioning,
+                'Linear System ILUT Tolerance': element.linearSystemILUTToleranceEdit,
+                'Linear System Abort Not Converged': element.linearSystemAbortWhenNotConvergedCheck,
+                'Linear System Residual Output': element.linearSystemResidualOutputEdit,
+                'Linear System Precondition Recompute': element.linearSystemPreconditionRecomputeEdit,
+                'ParaSails Threshold': element.thresholdEdit,
+                'ParaSails Filter': element.filterEdit,
+                'ParaSails MaxLevel': element.maxLevelEdit,
+                'ParaSails Symmetry': element.symmetryEdit,
+                'BoomerAMG Relax Type': element.boomerRelaxation,
+                'BoomerAMG Coarsen Type': element.boomerCoarsening,
+                'BoomerAMG Num Sweeps': element.boomerSweeps,
+                'BoomerAMG Max Levels': element.boomerMaxLevels,
+                'BoomerAMG Interpolation': element.boomerInterpolation,
+                'BoomerAMG Smooth Type': element.boomerSmoother,
+                'BoomerAMG Cycle Type': element.boomerCycle,
+                'Adaptive Mesh Refinement': element.adaptiveMeshRefinementCheck,
+                'Adaptive Mesh Name': element.adaptiveMeshNameEdit,
+                'Adaptive Remesh': element.adaptiveRemeshCheck,
+                'Adaptive Save Mesh': element.adaptiveSaveMeshCheck,
+                'Adaptive Coarsening': element.adaptiveCoarseningCheck,
+                'Adaptive Error Limit': element.adaptiveErrorLimitEdit,
+                'Adaptive Min H': element.adaptiveMinHEdit,
+                'Adaptive Max H': element.adaptiveMaxHEdit,
+                'Adaptive Max Change': element.adaptiveMaxChangeEdit}
+
+        while data:
+            key, value = data.pop(0).split('=')
+            key = key.strip()
+            value = value.strip()
+            if key == 'Linear System Solver' and value == 'Direct':
+                element.linearSystemSolverDirect.setChecked(True)
+                continue
+            if key == 'Linear System Solver' and value == 'Iterative':
+                element.linearSystemSolverIterative.setChecked(True)
+                continue
+            if key == 'Linear System Solver' and value == 'MultiGrid':
+                element.linearSystemSolverMultigrid.setChecked(True)
+                continue
+            if key == 'Linear System Use HYPRE' and value == 'True':
+                element.useHypre.setChecked(True)
+                continue
+            if key == 'Linear System Preconditioning' and value == 'ParaSails':
+                element.useParasails.setChecked(True)
+                continue
+            if key == 'Linear System Preconditioning' and value == 'BoomerAMG':
+                element.useBoomerAMG.setChecked(True)
+                continue
+            if key == 'Adaptive Mesh Refinement':
+                element.adaptiveMeshRefinement.setChecked(True)
+                continue
+            self._changeSettings(keys[key], value)
 
     def _general(self, block):
         """Change settings in the general setup of the Elmer module
@@ -175,17 +289,16 @@ class SifReader():
             if 'CHECK KEYWORDS' in data[0]:
                 ui.checkKeywordsWarn.setChecked(True)
                 data.pop(0)
-            else:
-                ui.checkKeywordsWarn.setChecked(False)
-                a, b = data.pop(0).strip().split(' ')[2:]
-                ui.meshDBEdit1.setText(a)
-                ui.meshDBEdit2.setText(b)
-                a = data.pop(0).strip().split(' ')[2:]
-                ui.includePathEdit.setText(a)
-                a = data.pop(0).strip().split(' ')[2:]
-                ui.resultsDirectoryEdit.setText(a)
-                text = '\n'.join(data)
-                ui.headerFreeTextEdit.setText(text)
+            ui.checkKeywordsWarn.setChecked(False)
+            a, b = data.pop(0).strip().split(' ')[2:]
+            ui.meshDBEdit1.setText(a)
+            ui.meshDBEdit2.setText(b)
+            a = data.pop(0).strip().split(' ')[2:][0]
+            ui.includePathEdit.setText(a)
+            a = data.pop(0).strip().split(' ')[2:][0]
+            ui.resultsDirectoryEdit.setText(a)
+            text = '\n'.join(data)
+            ui.headerFreeTextEdit.setText(text)
         if title == 'Simulation':
             a = data.pop(0).split('=')[1].strip()
             idx = ui.maxOutputLevelCombo.findText(a)
@@ -208,10 +321,6 @@ class SifReader():
             a = data.pop(0).split('=')[1].strip()
             idx = ui.bdfOrderCombo.findText(a)
             ui.bdfOrderCombo.setCurrentIndex(idx)
-            a = data.pop(0).split('=')[1].strip()
-            ui.timeStepIntervalsEdit.setText(a)
-            a = data.pop(0).split('=')[1].strip()
-            ui.timestepSizesEdit.setText(a)
             a = data.pop(0).split('=')[1].strip()
             ui.solverInputFileEdit.setText(a)
             a = data.pop(0).split('=')[1].strip()

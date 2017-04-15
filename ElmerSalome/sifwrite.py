@@ -234,7 +234,7 @@ class SifWriter():
                     self._addSifLine('  Nonlinear System Max Iterations = ', str(element.nonlinSystemMaxIterationEdit.text()).strip())
                     self._addSifLine('  Nonlinear System Relaxation Factor = ', str(element.nonlinSystemRelaxationFactorEdit.text()).strip())
                     if str(element.nonlinSystemConvergenceMeasureCombo.currentText()).strip() != "Norm":
-                        self._addSifLine('  Nonlinear System Convergence Measure = ', str(element.steadyStateConvergenceMeasureCombo.currentText()).strip())
+                        self._addSifLine('  Nonlinear System Convergence Measure = ', str(element.nonlinSystemConvergenceMeasureCombo.currentText()).strip())
                     self._addSifLine('  Nonlinear System Newton After Iterations = ', str(element.nonlinSystemNewtonAfterIterEdit.text()).strip())
                     self._addSifLine('  Nonlinear System Newton After Tolerance = ', str(element.nonlinSystemNewtonAfterTolEdit.text()).strip())
 
@@ -300,7 +300,7 @@ class SifWriter():
             idx += 1
             self._writeToSif('Equation ' + str(idx))
             self._writeToSif('  Name = "' + str(element.nameEdit.text()).strip() + '"')
-			for key, value in element.qhash.iteritems():
+            for key, value in element.qhash.iteritems():
                 self._makeSifEntry(value)
             activeSolvers = []
             N_activeSolvers = 0

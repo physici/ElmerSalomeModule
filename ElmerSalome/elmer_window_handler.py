@@ -50,7 +50,7 @@ class ElmerWindowHandler():
         self.sifFile = ''
         self.gsWindow = None
         # private fields
-        self._equationEditor = []  # stores the equations sets
+        self.equationEditor = []  # stores the equations sets
         self._materialEditor = []  # stores the defined materials
         self.solverParameterEditor = []  # stores the specific solver settings
         self._bodyForceEditor = []  # stores the body forces
@@ -152,7 +152,7 @@ class ElmerWindowHandler():
         # equations
         be.equationCombo.addItem("", "Empty")
         count += 1
-        for element in self._equationEditor:
+        for element in self.equationEditor:
             name = str(element.nameEdit.text()).strip()
             be.equationCombo.addItem(name, name)
             count += 1
@@ -242,12 +242,12 @@ class ElmerWindowHandler():
             # add listview to left layout-side
             layout.addWidget(self._listview, stretch=1)
             self._eqWindow.setLayout(layout)
-            self._pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            self.pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
             # create default solver settings
-            for idx in range(self._equationEditor[0].tabWidget.count()):
+            for idx in range(self.equationEditor[0].tabWidget.count()):
                 self._editNumericalMethods(idx, 0, False)
-			if visible:
-				self._eqWindow.show()
+            if visible:
+                self._eqWindow.show()
         else:
             self._eqWindow.show()
 
@@ -424,7 +424,7 @@ class ElmerWindowHandler():
         if item:
             item.widget().close()
         # 'show' the new editor == insert the selected editor
-        de = self._equationEditor[index.row()]
+        de = self.equationEditor[index.row()]
         de.show()
         layout.insertWidget(1, de, stretch=5)
         self._eqWindow.setWindowTitle(de.nameEdit.text())
@@ -895,7 +895,7 @@ class ElmerWindowHandler():
                 # close the window
                 self._matWindow.hide()
 
-    def _pdeEditorFinishedSlot(self, signal, ids):
+    def pdeEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the equation settings.
 
         Args:
@@ -906,10 +906,10 @@ class ElmerWindowHandler():
             ID of the body force set
         """
         # check if already in the storage and retrieve it
-        for eq in self._equationEditor:
+        for eq in self.equationEditor:
             temp = eq.ID
             if temp == ids:
-                ids = self._equationEditor.index(eq)
+                ids = self.equationEditor.index(eq)
                 break
 
         listview = self._listview
@@ -923,7 +923,7 @@ class ElmerWindowHandler():
         # OK or Apply
         if(signalOK):
             item = listview.item(ids)
-            de = self._equationEditor[ids]
+            de = self.equationEditor[ids]
             equationName = str(de.nameEdit.text()).strip()
             if not equationName:
                 sys.stdout.write("No equation name\n")
@@ -945,12 +945,12 @@ class ElmerWindowHandler():
             current = self._eqCurrent
             de = dynamiceditor.DynamicEditor()
             # put new instance into storage
-            self._equationEditor.append(de)
+            self.equationEditor.append(de)
             # populate tabs
             de.setupTabs(self._elmerDefs, "Equation", current)
             de.applyButton.setText("Apply")
             de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self._pdeEditorFinishedSlot)
+            de.dynamicEditorReady[int, int].connect(self.pdeEditorFinishedSlot)
             de.spareButton.setText("Edit Solver Settings")
             de.spareButton.show()
             de.dynamicEditorSpareButtonClicked[int, int].connect(self._editNumericalMethods)
@@ -965,17 +965,17 @@ class ElmerWindowHandler():
             item.setText(de.nameEdit.text())
             self._listview.addItem(item)
             # set new as selected
-            count = len(self._equationEditor)
+            count = len(self.equationEditor)
             self._listview.item(count - 1).setSelected(True)
             self._eqWindow.setWindowTitle(de.nameEdit.text())
             self._eqCurrent += 1
         # Delete
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             # remove the current equation editor
-            if len(self._equationEditor) > 1:
+            if len(self.equationEditor) > 1:
                 # remove the current equation
                 item = self._listview.takeItem(ids)
-                del self._equationEditor[ids]
+                del self.equationEditor[ids]
 
                 # show the previous equation
                 if ids > 0:
@@ -984,14 +984,14 @@ class ElmerWindowHandler():
                 layout = self._eqWindow.layout()
                 item = layout.takeAt(1)
                 item.widget().close()
-                de = self._equationEditor[ids]
+                de = self.equationEditor[ids]
                 layout.insertWidget(1, de, stretch=5)
                 de.show()
                 self._eqWindow.setWindowTitle(de.nameEdit.text())
             else:
                 # remove the current equation
-                del self._equationEditor[ids]
-                self._equationEditor = []
+                del self.equationEditor[ids]
+                self.equationEditor = []
                 # close the window
                 self._eqWindow.hide()
 
@@ -1025,7 +1025,7 @@ class ElmerWindowHandler():
 
         title = ""
         # get active tab in the currently opened equation set
-        for eq in self._equationEditor:
+        for eq in self.equationEditor:
             if eq.ID == ids:
                 title = eq.tabWidget.tabText(current)
                 break
