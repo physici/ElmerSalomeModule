@@ -45,6 +45,8 @@ class SifWriter():
         sifName = str(parameter.elem.firstChildElement('SifName').text()).strip()
         if sifName == '':
             sifName = str(parameter.elem.firstChildElement('Name').text()).strip()
+        if sifName == 'Active':
+            return
         sifName = '  ' + sifName + ' = '
         widgetType = parameter.elem.attribute('Widget', 'Edit')
         if widgetType == 'Edit':
@@ -72,7 +74,7 @@ class SifWriter():
         print('write_sif')
         print('----------------------------------------')
 
-        ui = self._ewh._gsWindow
+        ui = self._ewh.gsWindow
 
         if self.file:
             obj = open(self.file, 'w')
@@ -105,7 +107,6 @@ class SifWriter():
         self._addSifLine('  Timestep Sizes = ', str(ui.timestepSizesEdit.text()).strip())
         self._addSifLine('  Solver Input File = ', str(ui.solverInputFileEdit.text()).strip())
         self._addSifLine('  Post File = ', str(ui.postFileEdit.text()).strip())
-        self._writeToSif('  Use Mesh Names = Logical True')
         FreeText = str(ui.simulationFreeTextEdit.toPlainText()).splitlines()
         for line in FreeText:
             self._addSifLine('  ', line.strip())
@@ -158,7 +159,7 @@ class SifWriter():
         i_solver = -1
         count_solver = 0
         SolverList = []
-        for i_solver, element in enumerate(self._ewh._solverParameterEditor):
+        for i_solver, element in enumerate(self._ewh.solverParameterEditor):
             newSolver = SolverListItem()
             newSolver.Name = str(element.solverName)
             # Remark: why do we need to initialize here (see class definition for SolverListItem)?
@@ -167,7 +168,7 @@ class SifWriter():
             newSolver.Number = 0
 
             # find active solvers: loop over equations
-            for eq in self._ewh._equationEditor:
+            for eq in self._ewh.equationEditor:
                 key = '/' + newSolver.Name + '/Equation/Active/' + str(eq.ID)
                 if eq.qhash[key].widget.isChecked():
                     newSolver.Equations.append(eq.ID+1) # Equation numbering starts with 1 in sif!
@@ -289,18 +290,18 @@ class SifWriter():
                         self._addSifLine('  Adaptive Max H = ', str(element.adaptiveMaxHEdit.text()).strip())
                         self._addSifLine('  Adaptive Max Change = ', str(element.adaptiveMaxChangeEdit.text()).strip())
 
-                    self._addSifLine('  ! Multigrid: ', 'TODO')
+#                    self._addSifLine('  ! Multigrid: ', 'TODO')
 
                 self._writeToSif('End')
                 self._writeToSif('')
 
     	# makeEquationBlocks
         idx = 0
-        for element in self._ewh._equationEditor:
+        for element in self._ewh.equationEditor:
             idx += 1
             self._writeToSif('Equation ' + str(idx))
             self._writeToSif('  Name = "' + str(element.nameEdit.text()).strip() + '"')
-            for key, value in element.qhash.iteritems():
+            for key, value in element.qhash.items():
                 self._makeSifEntry(value)
             activeSolvers = []
             N_activeSolvers = 0

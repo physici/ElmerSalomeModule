@@ -41,8 +41,8 @@ class SifReader():
         path: str
             path to the sif-file
         """
-        pdb.set_trace()
-        
+        # pdb.set_trace()
+
         # read file and extract the blocks
         fs = open(path)
         data = fs.read()
@@ -95,7 +95,7 @@ class SifReader():
         # apply solver settings
         for block in solvers:
             self._solvers(block)
-            
+
         for block in equations:
             self._equation(block)
 
@@ -110,10 +110,10 @@ class SifReader():
             new value of the parameter
         """
         if isinstance(parameter, QtGui.QLineEdit):
-            parameter.setText(value)
+            parameter.setText(value.replace('"', ''))
         elif isinstance(parameter, QtGui.QTextEdit):
             sifValue = parameter.toPlainText()
-            sifValue = sifValue + value + '\n'
+            sifValue = sifValue + value.replace('"', '') + '\n'
             parameter.setText(sifValue)
         elif isinstance(parameter, QtGui.QComboBox):
             idx = parameter.findText(value)
@@ -123,32 +123,45 @@ class SifReader():
 
     def _equation(self, block):
         """Change settings of the equation
-        
+
         Args:
         ----
         block: str
             String containing of the given equation
         """
-        
+
+        # pdb.set_trace()
         data = block.split('\n')
-        
+
         # get equation set
         sifID = data.pop(0).split(' ')[1]
-        if len(self._ewh.equationEditor) < sifID:
+        if len(self._ewh.equationEditor) < int(sifID):
             self._ewh.pdeEditorFinishedSlot(3, sifID - 1)
-        eq = self._ewh.equationEditor[sifID - 1]
-        
+        eq = self._ewh.equationEditor[int(sifID) - 1]
+
         # set name
         name = data.pop(0).split('=')[1].strip()
-        eq.nameEdit.setText(name)
-        
+        eq.nameEdit.setText(name.replace('"', ''))
+
         # set active solver
-        sifID = data.pop(0).split('=')[1].strip()
-        name = self._sifIds[sifID]
-        key = '/' + name + '/Equation/Active/' + str(eq.ID)
-        eq.qhash[key].widget.setChecked(True)
-        
-        
+        while data:
+            parameter, setting = data.pop(0).split('=')
+            parameter = parameter.strip()
+            setting = setting.strip()
+            if 'Active Solvers' in parameter:
+                setting = setting.split(' ')
+                for key in setting:
+                    name = self._sifIds[key]
+                    key = '/' + name + '/Equation/Active/' + str(eq.ID)
+                    eq.qhash[key].widget.setChecked(True)
+                break
+            for key, value in eq.qhash.items():
+                sifName = str(value.elem.firstChildElement('SifName').text()).strip()
+                if sifName == '':
+                    sifName = str(value.elem.firstChildElement('Name').text()).strip()
+                if sifName == parameter and sifName != 'Active':
+                    self._changeSettings(value.widget, setting)
+
     def _solvers(self, block):
         """Change settings of the solver.
 
@@ -291,14 +304,14 @@ class SifReader():
                 data.pop(0)
             ui.checkKeywordsWarn.setChecked(False)
             a, b = data.pop(0).strip().split(' ')[2:]
-            ui.meshDBEdit1.setText(a)
-            ui.meshDBEdit2.setText(b)
+            ui.meshDBEdit1.setText(a.replace('"', ''))
+            ui.meshDBEdit2.setText(b.replace('"', ''))
             a = data.pop(0).strip().split(' ')[2:][0]
-            ui.includePathEdit.setText(a)
+            ui.includePathEdit.setText(a.replace('"', ''))
             a = data.pop(0).strip().split(' ')[2:][0]
-            ui.resultsDirectoryEdit.setText(a)
+            ui.resultsDirectoryEdit.setText(a.replace('"', ''))
             text = '\n'.join(data)
-            ui.headerFreeTextEdit.setText(text)
+            ui.headerFreeTextEdit.setText(text.replace('"', ''))
         if title == 'Simulation':
             a = data.pop(0).split('=')[1].strip()
             idx = ui.maxOutputLevelCombo.findText(a)

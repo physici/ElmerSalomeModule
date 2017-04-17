@@ -249,7 +249,8 @@ class ElmerWindowHandler():
             if visible:
                 self._eqWindow.show()
         else:
-            self._eqWindow.show()
+            if visible:
+                self._eqWindow.show()
 
         return self._eqWindow
 
