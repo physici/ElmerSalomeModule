@@ -128,8 +128,8 @@ class SifWriter():
 
         # makeBodyBlocks()
         count = 0
-        for objName in self._ewh._elementProperties:
-            properties = self._ewh._elementProperties[objName]
+        for objName in self._ewh.elementProperties:
+            properties = self._ewh.elementProperties[objName]
             if properties.objectName() == 'bodyPropertyDialog':
                 count += 1
                 self._writeToSif('Body ' + str(count))
@@ -318,30 +318,30 @@ class SifWriter():
             self._writeToSif('')
 
         # Materials
-        for mat in self._ewh._materialEditor:
+        for mat in self._ewh.materialEditor:
             self._addSifLine('Material ', str(mat.ID+1))
             self._addSifLine('  Name = ', '"'+str(mat.nameEdit.text()).strip()+'"')
-            for key, value in mat.qhash.iteritems():
+            for key, value in mat.qhash.items():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')
 
         # Body Forces
-        for bf in self._ewh._bodyForceEditor:
+        for bf in self._ewh.bodyForceEditor:
             self._addSifLine('Body Force ', str(bf.ID+1))
             self._addSifLine('  Name = ', '"'+str(bf.nameEdit.text()).strip()+'"')
-            for key, value in bf.qhash.iteritems():
+            for key, value in bf.qhash.items():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')
 
         # Boundary Conditions
         x = 1
-        for bc in self._ewh._boundaryConditionEditor:
+        for bc in self._ewh.boundaryConditionEditor:
             TargetBoundaries = []
             TargetBoundaryNumbers = []
-            for objName in self._ewh._elementProperties:
-                properties = self._ewh._elementProperties[objName]
+            for objName in self._ewh.elementProperties:
+                properties = self._ewh.elementProperties[objName]
                 if (properties.objectName() == 'boundaryPropertyDialog') and (properties.boundaryConditionCombo.currentIndex() == bc.ID+1):
                     TargetBoundaries.append(objName)
             if len(TargetBoundaries) > 0:
@@ -350,7 +350,7 @@ class SifWriter():
     #                self._writeToSif('  Target Boundaries('+str(len(TargetBoundaries))+') = ' + bcStr )
     #                self._writeToSif('  Name = ' + '"'+str(bc.nameEdit.text()).strip()+'"')
                     self._writeToSif('  Name = ' + '"'+str(name).strip()+'"')
-                    for key, value in bc.qhash.iteritems():
+                    for key, value in bc.qhash.items():
                         self._makeSifEntry(value)
                     self._writeToSif('! ToDo: Periodic BCs')
                     self._writeToSif('End')
@@ -358,10 +358,10 @@ class SifWriter():
                     x += 1
 
         # Initial Conditions
-        for ic in self._ewh._initialConditionEditor:
+        for ic in self._ewh.initialConditionEditor:
             self._addSifLine('Initial Condition ', str(ic.ID+1))
             self._addSifLine('  Name = ', '"'+str(ic.nameEdit.text()).strip()+'"')
-            for key, value in ic.qhash.iteritems():
+            for key, value in ic.qhash.items():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')

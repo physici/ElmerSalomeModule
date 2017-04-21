@@ -14,6 +14,7 @@ except ImportError:
     from PyQt5 import QtWidgets as QtGui
     from PyQt5 import QtXml
     from PyQt5 import QtCore
+import collections
 import pdb
 
 class SifReader():
@@ -43,9 +44,15 @@ class SifReader():
         """
         # pdb.set_trace()
 
-        # read file and extract the blocks
+        # read file
         fs = open(path)
         data = fs.read()
+        fs.close()
+        # remove all comments
+        for line in data:
+            if line.startswith('!'):
+                data = data.replace(line, '')
+        # and extract the blocks
         blocks = data.split(sep='End')
         blocks = [x.strip() for x in blocks]
         blocks.sort()
@@ -61,7 +68,9 @@ class SifReader():
         bforces = []
 
         for block in blocks:
-            if block.startswith('Body'):
+            if block.startswith('Body Force'):
+                bforces.append(block)
+            elif block.startswith('Body'):
                 bodies.append(block)
             elif block.startswith('Boundary'):
                 boundaries.append(block)
@@ -75,12 +84,10 @@ class SifReader():
                 general.append(block)
             elif block.startswith('Material'):
                 materials.append(block)
-            elif block.startswith('Inital'):
+            elif block.startswith('Initial'):
                 initial.append(block)
             elif block.startswith('Solver'):
                 solvers.append(block)
-            elif block.startswith('Body Force'):
-                bforces.append(block)
 
         # apply general settings
         for block in general:
@@ -92,12 +99,47 @@ class SifReader():
         for idx, element in enumerate(self._ewh.solverParameterEditor):
             self._solvIds.update({element.solverName: idx})
 
-        # apply solver settings
+        # apply settings
         for block in solvers:
             self._solvers(block)
 
         for block in equations:
             self._equation(block)
+
+        for block in materials:
+            self._materials(block)
+
+        for block in bforces:
+            self._bforces(block)
+
+        for block in initial:
+            self._icondition(block)
+
+        bc = []
+
+        # boundary conditions input has to be split in bcs first
+        # extract bc settings and count the number of different settings
+        for block in boundaries:
+            lines = block.split('\n')[2:]
+            line = '\n'.join(lines)
+            bc.append(line)
+        bc = dict(collections.Counter(bc))
+        # create bcs
+        count = 0
+        for key, value in bc.items():
+            self._bcondition(key)
+            bc.update({key: count})
+            count += 1
+        # connect boundaries
+        for block in boundaries:
+            lines = block.split('\n')
+            target = lines[1].split('=')[1].strip()
+            key = '\n'.join(lines[2:])
+            idx = bc[key]
+            name = 'BoundaryCondition {}'.format(idx + 1)
+            editor = self._ewh.showBoundaryPropertyDefinition(target, visible=False)
+            editor.boundaryConditionCombo.setCurrentIndex(editor.boundaryConditionCombo.findText(name))
+            self._ewh.elementProperties.update({target[1:-1]: editor})
 
     def _changeSettings(self, parameter, value):
         """Change settings of hashed parameter in element.
@@ -113,7 +155,10 @@ class SifReader():
             parameter.setText(value.replace('"', ''))
         elif isinstance(parameter, QtGui.QTextEdit):
             sifValue = parameter.toPlainText()
-            sifValue = sifValue + value.replace('"', '') + '\n'
+            if sifValue == '':
+                sifValue = value.replace('"', '')
+            else:
+                sifValue = sifValue + '\n' + value.replace('"', '')
             parameter.setText(sifValue)
         elif isinstance(parameter, QtGui.QComboBox):
             idx = parameter.findText(value)
@@ -121,23 +166,193 @@ class SifReader():
         elif isinstance(parameter, QtGui.QCheckBox):
             parameter.setChecked(value == 'True')
 
+    def _bcondition(self, block):
+        """Change settings for a new boundary condition
+
+        Args:
+        -----
+        block: str
+            String containing the settings of the given boundary condition
+        """
+
+        data = block.split('\n')
+
+        # create boundary condition set
+        count = len(self._ewh.boundaryConditionEditor)
+        if count == 0:
+            self._ewh.showAddBoundaryCondition(visible=False)
+        else:
+            self._ewh.boundaryConditionEditorFinishedSlot(3, count)
+        bc = self._ewh.boundaryConditionEditor[-1]
+
+        # set name
+        bc.nameEdit.setText('BoundaryCondition {}'.format(str(count + 1)))
+
+        # set boundary condition data
+        while data:
+            parameter, setting = data.pop(0).split('=')
+            parameter = parameter.strip()
+            setting = setting.strip()
+            freeText = True
+            for key, value in bc.qhash.items():
+                sifName = str(value.elem.firstChildElement('SifName').text()).strip()
+                if sifName == '':
+                    sifName = str(value.elem.firstChildElement('Name').text()).strip()
+                if sifName == parameter:
+                    self._changeSettings(value.widget, setting)
+                    freeText = False
+            if freeText:
+                value = bc.qhash['/General/BoundaryCondition/Free text/{}'.format(count)]
+                self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
+
+    def _icondition(self, block):
+        """Change settings for a new initial condition
+
+        Args:
+        -----
+        block: str
+            String containing the settings of the given initial condition
+        """
+
+        data = block.split('\n')
+
+        # get initial condition set
+        sifID = int(data.pop(0).split(' ')[2])
+        if len(self._ewh.initialConditionEditor) < sifID:
+            if sifID == 1:
+                self._ewh.showAddInitialCondition(visible=False)
+            else:
+                self._ewh.initialConditionEditorFinishedSlot(3, sifID - 1)
+        ic = self._ewh.initialConditionEditor[sifID - 1]
+
+        # set name
+        name = data.pop(0).split('=')[1].strip()
+        ic.nameEdit.setText(name.replace('"', ''))
+
+        # set initial condition data
+        while data:
+            parameter, setting = data.pop(0).split('=')
+            parameter = parameter.strip()
+            setting = setting.strip()
+            freeText = True
+            for key, value in ic.qhash.items():
+                sifName = str(value.elem.firstChildElement('SifName').text()).strip()
+                if sifName == '':
+                    sifName = str(value.elem.firstChildElement('Name').text()).strip()
+                if sifName == parameter:
+                    self._changeSettings(value.widget, setting)
+                    freeText = False
+            if freeText:
+                for key in ic.qhash.keys():
+                    if 'Free text' in key and 'input' not in key:
+                        value = ic.qhash[key]
+                        self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
+                        break
+
+    def _bforces(self, block):
+        """Change settings for a new body force
+
+        Args:
+        -----
+        block: str
+            String containing the settings of the given body force
+        """
+
+        data = block.split('\n')
+
+        # get body force set
+        sifID = int(data.pop(0).split(' ')[2])
+        if len(self._ewh.bodyForceEditor) < sifID:
+            if sifID == 1:
+                self._ewh.showAddBodyForce(visible=False)
+            else:
+                self._ewh.bodyForceEditorFinishedSlot(3, sifID - 1)
+        bf = self._ewh.bodyForceEditor[sifID - 1]
+
+        # set name
+        name = data.pop(0).split('=')[1].strip()
+        bf.nameEdit.setText(name.replace('"', ''))
+
+        # set body force data
+        while data:
+            parameter, setting = data.pop(0).split('=')
+            parameter = parameter.strip()
+            setting = setting.strip()
+            freeText = True
+            for key, value in bf.qhash.items():
+                sifName = str(value.elem.firstChildElement('SifName').text()).strip()
+                if sifName == '':
+                    sifName = str(value.elem.firstChildElement('Name').text()).strip()
+                if sifName == parameter:
+                    self._changeSettings(value.widget, setting)
+                    freeText = False
+            if freeText:
+                for key in bf.qhash.keys():
+                    if 'Free text' in key and 'input' not in key:
+                        value = bf.qhash[key]
+                        self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
+                        break
+
+    def _materials(self, block):
+        """Change settings for a new material
+
+        Args:
+        -----
+        block: str
+            String containing the settings of the given material
+        """
+
+        data = block.split('\n')
+
+        # get equation set
+        sifID = int(data.pop(0).split(' ')[1])
+        if len(self._ewh.materialEditor) < sifID:
+            if sifID == 1:
+                self._ewh.showAddMaterial(visible=False)
+            else:
+                self._ewh.matEditorFinishedSlot(3, sifID - 1)
+        mat = self._ewh.materialEditor[sifID - 1]
+
+        # set name
+        name = data.pop(0).split('=')[1].strip()
+        mat.nameEdit.setText(name.replace('"', ''))
+
+        # set material data
+        while data:
+            parameter, setting = data.pop(0).split('=')
+            parameter = parameter.strip()
+            setting = setting.strip()
+            freeText = True
+            for key, value in mat.qhash.items():
+                sifName = str(value.elem.firstChildElement('SifName').text()).strip()
+                if sifName == '':
+                    sifName = str(value.elem.firstChildElement('Name').text()).strip()
+                if sifName == parameter:
+                    self._changeSettings(value.widget, setting)
+                    freeText = False
+            if freeText:
+                for key in mat.qhash.keys():
+                    if 'Free text' in key and 'input' not in key:
+                        value = mat.qhash[key]
+                        self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
+                        break
+
     def _equation(self, block):
         """Change settings of the equation
 
         Args:
         ----
         block: str
-            String containing of the given equation
+            String containing the settings of the given equation
         """
 
-        # pdb.set_trace()
         data = block.split('\n')
 
         # get equation set
-        sifID = data.pop(0).split(' ')[1]
-        if len(self._ewh.equationEditor) < int(sifID):
+        sifID = int(data.pop(0).split(' ')[1])
+        if len(self._ewh.equationEditor) < sifID:
             self._ewh.pdeEditorFinishedSlot(3, sifID - 1)
-        eq = self._ewh.equationEditor[int(sifID) - 1]
+        eq = self._ewh.equationEditor[sifID - 1]
 
         # set name
         name = data.pop(0).split('=')[1].strip()
@@ -155,12 +370,20 @@ class SifReader():
                     key = '/' + name + '/Equation/Active/' + str(eq.ID)
                     eq.qhash[key].widget.setChecked(True)
                 break
+            freeText = True
             for key, value in eq.qhash.items():
                 sifName = str(value.elem.firstChildElement('SifName').text()).strip()
                 if sifName == '':
                     sifName = str(value.elem.firstChildElement('Name').text()).strip()
-                if sifName == parameter and sifName != 'Active':
+                if sifName == parameter:
                     self._changeSettings(value.widget, setting)
+                    freeText = False
+            if freeText:
+                for key in eq.qhash.keys():
+                    if 'Free text' in key and 'input' not in key:
+                        value = eq.qhash[key]
+                        self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
+                        break
 
     def _solvers(self, block):
         """Change settings of the solver.
