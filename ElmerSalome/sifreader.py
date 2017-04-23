@@ -15,7 +15,8 @@ except ImportError:
     from PyQt5 import QtXml
     from PyQt5 import QtCore
 import collections
-import pdb
+import re
+
 
 class SifReader():
     """SifReader"""
@@ -42,16 +43,15 @@ class SifReader():
         path: str
             path to the sif-file
         """
-        # pdb.set_trace()
 
         # read file
         fs = open(path)
         data = fs.read()
         fs.close()
         # remove all comments
-        for line in data:
-            if line.startswith('!'):
-                data = data.replace(line, '')
+        comments = re.findall(r'\![ ]*.*\n', data)
+        for line in comments:
+            data = data.replace(line, '')
         # and extract the blocks
         blocks = data.split(sep='End')
         blocks = [x.strip() for x in blocks]
@@ -102,18 +102,16 @@ class SifReader():
         # apply settings
         for block in solvers:
             self._solvers(block)
-
         for block in equations:
             self._equation(block)
-
         for block in materials:
             self._materials(block)
-
         for block in bforces:
             self._bforces(block)
-
         for block in initial:
             self._icondition(block)
+        for block in bodies:
+            self._bproperties(block)
 
         bc = []
 
@@ -151,6 +149,7 @@ class SifReader():
         value: str
             new value of the parameter
         """
+
         if isinstance(parameter, QtGui.QLineEdit):
             parameter.setText(value.replace('"', ''))
         elif isinstance(parameter, QtGui.QTextEdit):
@@ -165,6 +164,30 @@ class SifReader():
             parameter.setCurrentIndex(idx)
         elif isinstance(parameter, QtGui.QCheckBox):
             parameter.setChecked(value == 'True')
+
+    def _bproperties(self, block):
+        """Change settings for a new boundary condition
+
+        Args:
+        -----
+        block: str
+            String containing the settings of the given boundary condition
+        """
+
+        data = block.split('\n')
+        target = data[1].split('=')[1].strip()
+
+        # create new window
+        editor = self._ewh.showBodyPropertyDefinition(target, visible=False)
+        idx = data[2].split('=')[1].strip()
+        editor.equationCombo.setCurrentIndex(int(idx))
+        idx = data[3].split('=')[1].strip()
+        editor.materialCombo.setCurrentIndex(int(idx))
+        idx = data[4].split('=')[1].strip()
+        editor.bodyForceCombo.setCurrentIndex(int(idx))
+        idx = data[5].split('=')[1].strip()
+        editor.initialConditionCombo.setCurrentIndex(int(idx))
+        self._ewh.elementProperties.update({target[1:-1]: editor})
 
     def _bcondition(self, block):
         """Change settings for a new boundary condition

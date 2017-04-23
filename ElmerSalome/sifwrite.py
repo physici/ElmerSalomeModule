@@ -126,6 +126,8 @@ class SifWriter():
         self._writeToSif('End')
         self._writeToSif('')
 
+        import pdb
+        pdb.set_trace()
         # makeBodyBlocks()
         count = 0
         for objName in self._ewh.elementProperties:

@@ -129,7 +129,7 @@ class ElmerWindowHandler():
         self._window = be
         return self._window
 
-    def showBodyPropertyDefinition(self, objName):
+    def showBodyPropertyDefinition(self, objName, visible=True):
         """Dialog to define body properties for an object.
 
         Args:
@@ -192,8 +192,9 @@ class ElmerWindowHandler():
 
         # connect to slot
         be.bodyPropertyEditorApply.connect(self._bodyPropertyChanged)
-
-        be.show()
+        
+        if visible:
+            be.show()
         self._window = be
         return self._window
 
