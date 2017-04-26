@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Created on 
+
+@author: Matthias Zenker
+
+Sif writer class
+"""
+
 class SolverListItem:
     Name = ''
     Equations = []
@@ -6,6 +15,7 @@ class SolverListItem:
 
 
 class SifWriter():
+    """SifWriter"""
 
     def __init__(self, ewh):
         # public
@@ -35,10 +45,14 @@ class SifWriter():
         sifName = str(parameter.elem.firstChildElement('SifName').text()).strip()
         if sifName == '':
             sifName = str(parameter.elem.firstChildElement('Name').text()).strip()
+        if sifName == 'Active':
+            return
         sifName = '  ' + sifName + ' = '
         widgetType = parameter.elem.attribute('Widget', 'Edit')
         if widgetType == 'Edit':
             sifValue = str(parameter.widget.text()).strip()
+            if 'Prandtl' in sifName: # elmer bug
+                return
             self._addSifLine(sifName, sifValue)
         elif widgetType == 'TextEdit':
             sifValue = parameter.widget.toPlainText()
@@ -62,7 +76,7 @@ class SifWriter():
         print('write_sif')
         print('----------------------------------------')
 
-        ui = self._ewh._gsWindow
+        ui = self._ewh.gsWindow
 
         if self.file:
             obj = open(self.file, 'w')
@@ -95,7 +109,6 @@ class SifWriter():
         self._addSifLine('  Timestep Sizes = ', str(ui.timestepSizesEdit.text()).strip())
         self._addSifLine('  Solver Input File = ', str(ui.solverInputFileEdit.text()).strip())
         self._addSifLine('  Post File = ', str(ui.postFileEdit.text()).strip())
-        self._writeToSif('  Use Mesh Names = Logical True')
         FreeText = str(ui.simulationFreeTextEdit.toPlainText()).splitlines()
         for line in FreeText:
             self._addSifLine('  ', line.strip())
@@ -117,8 +130,8 @@ class SifWriter():
 
         # makeBodyBlocks()
         count = 0
-        for objName in self._ewh._elementProperties:
-            properties = self._ewh._elementProperties[objName]
+        for objName in self._ewh.elementProperties:
+            properties = self._ewh.elementProperties[objName]
             if properties.objectName() == 'bodyPropertyDialog':
                 count += 1
                 self._writeToSif('Body ' + str(count))
@@ -148,7 +161,7 @@ class SifWriter():
         i_solver = -1
         count_solver = 0
         SolverList = []
-        for i_solver, element in enumerate(self._ewh._solverParameterEditor):
+        for i_solver, element in enumerate(self._ewh.solverParameterEditor):
             newSolver = SolverListItem()
             newSolver.Name = str(element.solverName)
             # Remark: why do we need to initialize here (see class definition for SolverListItem)?
@@ -157,7 +170,7 @@ class SifWriter():
             newSolver.Number = 0
 
             # find active solvers: loop over equations
-            for eq in self._ewh._equationEditor:
+            for eq in self._ewh.equationEditor:
                 key = '/' + newSolver.Name + '/Equation/Active/' + str(eq.ID)
                 if eq.qhash[key].widget.isChecked():
                     newSolver.Equations.append(eq.ID+1) # Equation numbering starts with 1 in sif!
@@ -180,7 +193,6 @@ class SifWriter():
                 key = str('/'+element.solverName+'/Solver/Variable/'+str(i_solver))
                 if key in element.generalOptions.qhash:
                     self._addSifLine('  Variable = ', str(element.generalOptions.qhash[key].widget.text()).strip())
-                    self._writeToSif('! ToDo: DOFs')
                 for key in element.generalOptions.qhash.keys():
                     value = element.generalOptions.qhash[key]
                     if (str(element.solverName + '/Solver') in key) and not(any(s in key for s in ['Variable','Procedure'])):
@@ -225,7 +237,7 @@ class SifWriter():
                     self._addSifLine('  Nonlinear System Max Iterations = ', str(element.nonlinSystemMaxIterationEdit.text()).strip())
                     self._addSifLine('  Nonlinear System Relaxation Factor = ', str(element.nonlinSystemRelaxationFactorEdit.text()).strip())
                     if str(element.nonlinSystemConvergenceMeasureCombo.currentText()).strip() != "Norm":
-                        self._addSifLine('  Nonlinear System Convergence Measure = ', str(element.steadyStateConvergenceMeasureCombo.currentText()).strip())
+                        self._addSifLine('  Nonlinear System Convergence Measure = ', str(element.nonlinSystemConvergenceMeasureCombo.currentText()).strip())
                     self._addSifLine('  Nonlinear System Newton After Iterations = ', str(element.nonlinSystemNewtonAfterIterEdit.text()).strip())
                     self._addSifLine('  Nonlinear System Newton After Tolerance = ', str(element.nonlinSystemNewtonAfterTolEdit.text()).strip())
 
@@ -280,17 +292,19 @@ class SifWriter():
                         self._addSifLine('  Adaptive Max H = ', str(element.adaptiveMaxHEdit.text()).strip())
                         self._addSifLine('  Adaptive Max Change = ', str(element.adaptiveMaxChangeEdit.text()).strip())
 
-                    self._addSifLine('  ! Multigrid: ', 'TODO')
+#                    self._addSifLine('  ! Multigrid: ', 'TODO')
 
                 self._writeToSif('End')
                 self._writeToSif('')
 
     	# makeEquationBlocks
         idx = 0
-        for element in self._ewh._equationEditor:
+        for element in self._ewh.equationEditor:
             idx += 1
             self._writeToSif('Equation ' + str(idx))
             self._writeToSif('  Name = "' + str(element.nameEdit.text()).strip() + '"')
+            for key, value in element.qhash.iteritems():
+                self._makeSifEntry(value)
             activeSolvers = []
             N_activeSolvers = 0
             for sol in SolverList:
@@ -306,7 +320,7 @@ class SifWriter():
             self._writeToSif('')
 
         # Materials
-        for mat in self._ewh._materialEditor:
+        for mat in self._ewh.materialEditor:
             self._addSifLine('Material ', str(mat.ID+1))
             self._addSifLine('  Name = ', '"'+str(mat.nameEdit.text()).strip()+'"')
             for key, value in mat.qhash.iteritems():
@@ -315,7 +329,7 @@ class SifWriter():
             self._writeToSif('')
 
         # Body Forces
-        for bf in self._ewh._bodyForceEditor:
+        for bf in self._ewh.bodyForceEditor:
             self._addSifLine('Body Force ', str(bf.ID+1))
             self._addSifLine('  Name = ', '"'+str(bf.nameEdit.text()).strip()+'"')
             for key, value in bf.qhash.iteritems():
@@ -325,11 +339,11 @@ class SifWriter():
 
         # Boundary Conditions
         x = 1
-        for bc in self._ewh._boundaryConditionEditor:
+        for bc in self._ewh.boundaryConditionEditor:
             TargetBoundaries = []
             TargetBoundaryNumbers = []
-            for objName in self._ewh._elementProperties:
-                properties = self._ewh._elementProperties[objName]
+            for objName in self._ewh.elementProperties:
+                properties = self._ewh.elementProperties[objName]
                 if (properties.objectName() == 'boundaryPropertyDialog') and (properties.boundaryConditionCombo.currentIndex() == bc.ID+1):
                     TargetBoundaries.append(objName)
             if len(TargetBoundaries) > 0:
@@ -346,7 +360,7 @@ class SifWriter():
                     x += 1
 
         # Initial Conditions
-        for ic in self._ewh._initialConditionEditor:
+        for ic in self._ewh.initialConditionEditor:
             self._addSifLine('Initial Condition ', str(ic.ID+1))
             self._addSifLine('  Name = ', '"'+str(ic.nameEdit.text()).strip()+'"')
             for key, value in ic.qhash.iteritems():

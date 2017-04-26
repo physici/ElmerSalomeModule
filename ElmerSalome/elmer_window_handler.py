@@ -3,11 +3,15 @@
 Created on Sat Sep  3 14:31:15 2016
 
 @author: Rainer Jacob
+
+Main class for Elmer functionality
 """
+qt4 = False
 try:
     from PyQt4 import QtGui
     from PyQt4 import QtXml
     from PyQt4 import QtCore
+    qt4 = True
 except ImportError:
     from PyQt5 import QtWidgets as QtGui
     from PyQt5 import QtXml
@@ -28,6 +32,7 @@ import bodypropertyeditor
 import boundarypropertyeditor
 import materiallibrary
 import sifwrite
+import sifreader
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + os.sep + "forms" + os.sep
@@ -46,14 +51,15 @@ class ElmerWindowHandler():
         # public fields
         self.meshDirectory = ''
         self.sifFile = ''
+        self.gsWindow = None
+        self.equationEditor = []  # stores the equations sets
+        self.materialEditor = []  # stores the defined materials
+        self.solverParameterEditor = []  # stores the specific solver settings
+        self.bodyForceEditor = []  # stores the body forces
+        self.initialConditionEditor = []  # stores the initial conditions
+        self.boundaryConditionEditor = []  # stores the boundary conditions
+        self.elementProperties = {}  # stores the properties of bodies/faces by name
         # private fields
-        self._equationEditor = []  # stores the equations sets
-        self._materialEditor = []  # stores the defined materials
-        self._solverParameterEditor = []  # stores the specific solver settings
-        self._bodyForceEditor = []  # stores the body forces
-        self._initialConditionEditor = []  # stores the initial conditions
-        self._boundaryConditionEditor = []  # stores the boundary conditions
-        self._elementProperties = {}  # stores the properties of bodies/faces by name
         self._materialLibrary = materiallibrary.MaterialLibrary(path_forms, path_edfs)
         # storage variables to to keep track of windows
         self._elmerDefs = None
@@ -64,7 +70,6 @@ class ElmerWindowHandler():
         self._bfWindow = None
         self._bcWindow = None
         self._icWindow = None
-        self._gsWindow = None
         self._matCurrent = 0
         self._eqCurrent = 0
         self._bfCurrent = 0
@@ -83,7 +88,7 @@ class ElmerWindowHandler():
                                         "Requires ELMER, ELMERGUI and ELMER_HOME variable to be set.\n\n" \
                                         "Functionality provided only in Mesh-module.")
 
-    def showBoundaryPropertyDefinition(self, objName):
+    def showBoundaryPropertyDefinition(self, objName, visible=True):
         """Dialog to define boundary properties for an object.
 
         Args:
@@ -106,7 +111,7 @@ class ElmerWindowHandler():
         count = 1
         be.boundaryConditionCombo.addItem("", "Empty")
         count += 1
-        for element in self._boundaryConditionEditor:
+        for element in self.boundaryConditionEditor:
             name = str(element.nameEdit.text()).strip()
             be.boundaryConditionCombo.addItem(name, name)
             count += 1
@@ -114,19 +119,20 @@ class ElmerWindowHandler():
         count = 1
 
         # check if element already has properties
-        if objName in self._elementProperties:
-            properties = self._elementProperties[objName]
+        if objName in self.elementProperties:
+            properties = self.elementProperties[objName]
             be.boundaryConditionCombo.setCurrentIndex(be.boundaryConditionCombo.findText(properties.boundaryProperties))
             be.boundaryAsABody.setCheckState(properties.bodyCondition)
 
         # connect to slot
         be.boundaryPropertyEditorApply.connect(self._boundaryPropertyChanged)
 
-        be.show()
+        if visible:
+            be.show()
         self._window = be
         return self._window
 
-    def showBodyPropertyDefinition(self, objName):
+    def showBodyPropertyDefinition(self, objName, visible=True):
         """Dialog to define body properties for an object.
 
         Args:
@@ -150,7 +156,7 @@ class ElmerWindowHandler():
         # equations
         be.equationCombo.addItem("", "Empty")
         count += 1
-        for element in self._equationEditor:
+        for element in self.equationEditor:
             name = str(element.nameEdit.text()).strip()
             be.equationCombo.addItem(name, name)
             count += 1
@@ -158,7 +164,7 @@ class ElmerWindowHandler():
         # materials
         be.materialCombo.addItem("", "Empty")
         count += 1
-        for element in self._materialEditor:
+        for element in self.materialEditor:
             name = str(element.nameEdit.text()).strip()
             be.materialCombo.addItem(name, name)
             count += 1
@@ -166,7 +172,7 @@ class ElmerWindowHandler():
         # body forces
         be.bodyForceCombo.addItem("", "Empty")
         count += 1
-        for element in self._bodyForceEditor:
+        for element in self.bodyForceEditor:
             name = str(element.nameEdit.text()).strip()
             be.bodyForceCombo.addItem(name, name)
             count += 1
@@ -174,14 +180,14 @@ class ElmerWindowHandler():
         # initial conditions
         be.initialConditionCombo.addItem("", "Empty")
         count += 1
-        for element in self._initialConditionEditor:
+        for element in self.initialConditionEditor:
             name = str(element.nameEdit.text()).strip()
             be.initialConditionCombo.addItem(name, name)
             count += 1
 
         # check if element has properties already
-        if objName in self._elementProperties:
-            properties = self._elementProperties[objName]
+        if objName in self.elementProperties:
+            properties = self.elementProperties[objName]
             be.equationCombo.setCurrentIndex(be.equationCombo.findText(properties.equation))
             be.materialCombo.setCurrentIndex(be.materialCombo.findText(properties.material))
             be.bodyForceCombo.setCurrentIndex(be.bodyForceCombo.findText(properties.force))
@@ -190,7 +196,8 @@ class ElmerWindowHandler():
         # connect to slot
         be.bodyPropertyEditorApply.connect(self._bodyPropertyChanged)
 
-        be.show()
+        if visible:
+            be.show()
         self._window = be
         return self._window
 
@@ -199,11 +206,11 @@ class ElmerWindowHandler():
 
         Return:
         -------
-        _gsWindow: GeneralSetup-class
+        gsWindow: GeneralSetup-class
             Window for the general settings
         """
-        self._gsWindow.show()
-        return self._gsWindow
+        self.gsWindow.show()
+        return self.gsWindow
 
     def showSolverParametersEditor(self):
         """Show Solver settings window
@@ -216,8 +223,13 @@ class ElmerWindowHandler():
         sp = solverparameters.SolverParameterEditor(path_forms)
         return sp
 
-    def showAddEquation(self):
+    def showAddEquation(self, visible=True):
         """Show Equation settings window
+
+		Args:
+		-----
+		visible: bool, optional
+			show equation window or prevent drawing
 
         Return:
         -------
@@ -235,17 +247,19 @@ class ElmerWindowHandler():
             # add listview to left layout-side
             layout.addWidget(self._listview, stretch=1)
             self._eqWindow.setLayout(layout)
-            self._pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            self.pdeEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
             # create default solver settings
-            for idx in range(self._equationEditor[0].tabWidget.count()):
+            for idx in range(self.equationEditor[0].tabWidget.count()):
                 self._editNumericalMethods(idx, 0, False)
-            self._eqWindow.show()
+            if visible:
+                self._eqWindow.show()
         else:
-            self._eqWindow.show()
+            if visible:
+                self._eqWindow.show()
 
         return self._eqWindow
 
-    def showAddMaterial(self):
+    def showAddMaterial(self, visible=True):
         """Show Material settings window
 
         Return:
@@ -264,14 +278,16 @@ class ElmerWindowHandler():
             layout.addWidget(self._listview, stretch=1)
             self._matWindow.setWindowTitle("Material Library")
             self._matWindow.setLayout(layout)
-            self._matEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
-            self._matWindow.show()
+            self.matEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            if visible:
+                self._matWindow.show()
         else:
-            self._matWindow.show()
+            if visible:
+                self._matWindow.show()
 
         return self._matWindow
 
-    def showAddBodyForce(self):
+    def showAddBodyForce(self, visible=True):
         """Show Body forces settings window
 
         Return:
@@ -289,14 +305,16 @@ class ElmerWindowHandler():
             layout.addWidget(self._listview, stretch=1)
             self._bfWindow.setWindowTitle("Body force settings")
             self._bfWindow.setLayout(layout)
-            self._bodyForceEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
-            self._bfWindow.show()
+            self.bodyForceEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            if visible:
+                self._bfWindow.show()
         else:
-            self._bfWindow.show()
+            if visible:
+                self._bfWindow.show()
 
         return self._bfWindow
 
-    def showAddInitialCondition(self):
+    def showAddInitialCondition(self, visible=True):
         """Show Initial conditions settings window
 
         Return:
@@ -308,20 +326,22 @@ class ElmerWindowHandler():
             # create a horizontal split layout
             self._icWindow = QtGui.QWidget()
             layout = QtGui.QHBoxLayout()
-            self._listview = QtGui.QListWidget()
-            self._listview.clicked[QtCore.QModelIndex].connect(self._icItemChanged)
-            self._listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-            layout.addWidget(self._listview, stretch=1)
+            listview = QtGui.QListWidget()
+            listview.clicked[QtCore.QModelIndex].connect(self._icItemChanged)
+            listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+            layout.addWidget(listview, stretch=1)
             self._icWindow.setWindowTitle("Initial Condition settings")
             self._icWindow.setLayout(layout)
-            self._initialConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
-            self._icWindow.show()
+            self.initialConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            if visible:
+                self._icWindow.show()
         else:
-            self._icWindow.show()
+            if visible:
+                self._icWindow.show()
 
         return self._icWindow
 
-    def showAddBoundaryCondition(self):
+    def showAddBoundaryCondition(self, visible=True):
         """Show Boundary conditions settings window
 
         Return:
@@ -333,168 +353,22 @@ class ElmerWindowHandler():
             # create a horizontal split layout
             self._bcWindow = QtGui.QWidget()
             layout = QtGui.QHBoxLayout()
-            self._listview = QtGui.QListWidget()
-            self._listview.clicked[QtCore.QModelIndex].connect(self._bcItemChanged)
-            self._listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-            layout.addWidget(self._listview, stretch=1)
+            listview = QtGui.QListWidget()
+            listview.clicked[QtCore.QModelIndex].connect(self._bcItemChanged)
+            listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+            layout.addWidget(listview, stretch=1)
             self._bcWindow.setWindowTitle("Boundary Condition settings")
             self._bcWindow.setLayout(layout)
-            self._boundaryConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
-            self._bcWindow.show()
+            self.boundaryConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
+            if visible:
+                self._bcWindow.show()
         else:
-            self._bcWindow.show()
+            if visible:
+                self._bcWindow.show()
 
         return self._bcWindow
 
-    def sif_write(self):
-        """Sif file generator"""
-        # create new instance of SifWriter-class
-        sfw = sifwrite.SifWriter(self)
-        # check if mesh export directory has been defined
-        if not self.meshDirectory:
-            d = str(QtGui.QFileDialog.getExistingDirectory(parent=None, caption="Select Directory"))
-            if not d:
-                return
-            self.meshDirectory = os.path.normpath(d)
-        sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
-        # generate sif file
-        try:
-            sfw.writeSif()
-            self.sifFile = self.meshDirectory + os.sep + 'simulation.sif'
-        except:
-            QtGui.QMessageBox.warning(None, 'Error',
-                                          "An error occured while writing the sif-file.")
-            return
-
-    def _initGeneralSetup(self):
-        """Load the default general settings.
-
-        Return:
-        -------
-        _gsWindow: GeneralSetup-class
-            Window for the general settings
-        """
-        ge = generalsetup.GeneralSetup(path_forms)
-        self._gsWindow = ge
-        return ge
-
-    def _boundaryPropertyChanged(self, boundaryPropertyEditor, name):
-        """Signal when boundary properties of 'name' have changed.
-
-        Args:
-        -----
-        boundaryPropertyEditor: BoundaryPropertyEditor-class
-            The current boundary property
-        name: str
-            Name of the object whose boundary properties have been changed.
-        """
-        self._elementProperties.update({str(name): boundaryPropertyEditor})
-
-    def _bodyPropertyChanged(self, bodyPropertyEditor, name):
-        """Signal when body properties of 'name' have changed.
-
-        Args:
-        -----
-        boundaryPropertyEditor: BodyPropertyEditor-class
-            The current Body property
-        name: str
-            Name of the object whose body properties have been changed.
-        """
-        self._elementProperties.update({str(name): bodyPropertyEditor})
-
-    def _eqItemChanged(self, index):
-        """Method for changing the selected item in the equation editor view
-
-        Args:
-        -----
-        index: QModelIndex
-            index of the newly selected item.
-        """
-        # 'hide' the old editor == second element in layout
-        layout = self._eqWindow.layout()
-        item = layout.takeAt(1)
-        if item:
-            item.widget().close()
-        # 'show' the new editor == insert the selected editor
-        de = self._equationEditor[index.row()]
-        de.show()
-        layout.insertWidget(1, de, stretch=5)
-        self._eqWindow.setWindowTitle(de.nameEdit.text())
-
-    def _matItemChanged(self, index):
-        """Method for changing the selected item in the material editor view
-
-        Args:
-        -----
-        index: QModelIndex
-            index of the newly selected item.
-        """
-        # 'hide' the old editor == second element in layout
-        layout = self._matWindow.layout()
-        item = layout.takeAt(1)
-        item.widget().close()
-        # 'show' the new editor == insert the selected editor
-        de = self._materialEditor[index.row()]
-        layout.insertWidget(1, de, stretch=5)
-        de.show()
-        self._matWindow.setWindowTitle(de.nameEdit.text())
-
-    def _bfItemChanged(self, index):
-        """Method for changing the selected item in the body force editor view
-
-        Args:
-        -----
-        index: QModelIndex
-            index of the newly selected item.
-        """
-        # 'hide' the old editor == second element in layout
-        layout = self._bfWindow.layout()
-        item = layout.takeAt(1)
-        item.widget().close()
-        # 'show' the new editor == insert the selected editor
-        de = self._bodyForceEditor[index.row()]
-        layout.insertWidget(1, de, stretch=5)
-        de.show()
-        self._bfWindow.setWindowTitle(de.nameEdit.text())
-
-    def _icItemChanged(self, index):
-        """Method for changing the selected item in the body force editor view
-
-        Args:
-        -----
-        index: QModelIndex
-            index of the newly selected item.
-        """
-        # 'hide' the old editor == second element in layout
-        layout = self._icWindow.layout()
-        item = layout.takeAt(1)
-        item.widget().close()
-        # 'show' the new editor == insert the selected editor
-        de = self._initialConditionEditor[index.row()]
-        layout.insertWidget(1, de, stretch=5)
-        de.show()
-        self._icWindow.setWindowTitle(de.nameEdit.text())
-
-    def _bcItemChanged(self, index):
-        """Method for changing the selected item in the boundary condition
-        editor view
-
-        Args:
-        -----
-        index: QModelIndex
-            index of the newly selected item.
-        """
-        # 'hide' the old editor == second element in layout
-        layout = self._bcWindow.layout()
-        item = layout.takeAt(1)
-        item.widget().close()
-        # 'show' the new editor == insert the selected editor
-        de = self._boundaryConditionEditor[index.row()]
-        layout.insertWidget(1, de, stretch=5)
-        de.show()
-        self._bcWindow.setWindowTitle(de.nameEdit.text())
-
-    def _bodyForceEditorFinishedSlot(self, signal, ids):
+    def bodyForceEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the body force settings.
 
         Args:
@@ -505,13 +379,13 @@ class ElmerWindowHandler():
             ID of the body force set
         """
         # check if already in the storage and retrieve it
-        for bf in self._bodyForceEditor:
+        for bf in self.bodyForceEditor:
             temp = bf.ID
             if temp == ids:
-                ids = self._bodyForceEditor.index(bf)
+                ids = self.bodyForceEditor.index(bf)
                 break
 
-        listview = self._listview
+        listview = self._bfWindow.layout().itemAt(0).widget()
 
         # check OK-Button or Apply-Button
         signalOK = False
@@ -522,7 +396,7 @@ class ElmerWindowHandler():
         # OK or Apply
         if(signalOK):
             item = listview.item(ids)
-            de = self._bodyForceEditor[ids]
+            de = self.bodyForceEditor[ids]
             bfName = str(de.nameEdit.text()).strip()
             if not bfName:
                 sys.stdout.write("Body force\n")
@@ -544,12 +418,12 @@ class ElmerWindowHandler():
             current = self._bfCurrent
             de = dynamiceditor.DynamicEditor()
             # put new instance into storage
-            self._bodyForceEditor.append(de)
+            self.bodyForceEditor.append(de)
             # populate tabs
             de.setupTabs(self._elmerDefs, "BodyForce", current)
             de.applyButton.setText("Apply")
             de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self._bodyForceEditorFinishedSlot)
+            de.dynamicEditorReady[int, int].connect(self.bodyForceEditorFinishedSlot)
 
             # clear right side of layout and at the new dynamic editor
             item = layout.takeAt(1)
@@ -559,39 +433,39 @@ class ElmerWindowHandler():
             # add item to list
             item = QtGui.QListWidgetItem()
             item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
+            listview.addItem(item)
             self._bfWindow.setWindowTitle(de.nameEdit.text())
             # set new as selected
-            count = len(self._bodyForceEditor)
-            self._listview.item(count - 1).setSelected(True)
+            count = len(self.bodyForceEditor)
+            listview.item(count - 1).setSelected(True)
             self._bfCurrent += 1
         # Delete
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             # remove the current body force
-            if len(self._bodyForceEditor) > 1:
+            if len(self.bodyForceEditor) > 1:
                 # remove the current element
-                item = self._listview.takeItem(ids)
-                del self._bodyForceEditor[ids]
+                item = listview.takeItem(ids)
+                del self.bodyForceEditor[ids]
 
                 # show the previous element
                 if ids > 0:
                     ids -= 1
-                self._listview.item(ids).setSelected(True)
+                listview.item(ids).setSelected(True)
                 layout = self._bfWindow.layout()
                 item = layout.takeAt(1)
                 item.widget().close()
-                de = self._bodyForceEditor[ids]
+                de = self.bodyForceEditor[ids]
                 layout.insertWidget(1, de, stretch=5)
                 de.show()
                 self._bfWindow.setWindowTitle(de.nameEdit.text())
             else:
                 # remove the last element
-                del self._bodyForceEditor[ids]
-                self._bodyForceEditor = []
+                del self.bodyForceEditor[ids]
+                self.bodyForceEditor = []
                 # close the window
                 self._bfWindow.hide()
 
-    def _initialConditionEditorFinishedSlot(self, signal, ids):
+    def initialConditionEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the initial condition
         settings.
 
@@ -603,13 +477,13 @@ class ElmerWindowHandler():
             ID of the body force set
         """
         # check if already in the storage and retrieve it
-        for ic in self._initialConditionEditor:
+        for ic in self.initialConditionEditor:
             temp = ic.ID
             if temp == ids:
-                ids = self._initialConditionEditor.index(ic)
+                ids = self.initialConditionEditor.index(ic)
                 break
 
-        listview = self._listview
+        listview = self._icWindow.layout().itemAt(0).widget()
 
         # check OK-Button or Apply-Button
         signalOK = False
@@ -620,7 +494,7 @@ class ElmerWindowHandler():
         # OK or Apply
         if(signalOK):
             item = listview.item(ids)
-            de = self._initialConditionEditor[ids]
+            de = self.initialConditionEditor[ids]
             icName = str(de.nameEdit.text()).strip()
             if not icName:
                 sys.stdout.write("Initial Condition\n")
@@ -642,12 +516,12 @@ class ElmerWindowHandler():
             current = self._icCurrent
             de = dynamiceditor.DynamicEditor()
             # put new instance into storage
-            self._initialConditionEditor.append(de)
+            self.initialConditionEditor.append(de)
             # populate tabs
             de.setupTabs(self._elmerDefs, "InitialCondition", current)
             de.applyButton.setText("Apply")
             de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self._initialConditionEditorFinishedSlot)
+            de.dynamicEditorReady[int, int].connect(self.initialConditionEditorFinishedSlot)
 
             # clear right side of layout and at the new dynamic editor
             item = layout.takeAt(1)
@@ -657,39 +531,39 @@ class ElmerWindowHandler():
             # add item to list
             item = QtGui.QListWidgetItem()
             item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
+            listview.addItem(item)
             self._icWindow.setWindowTitle(de.nameEdit.text())
             # set new as selected
-            count = len(self._initialConditionEditor)
-            self._listview.item(count - 1).setSelected(True)
+            count = len(self.initialConditionEditor)
+            listview.item(count - 1).setSelected(True)
             self._icCurrent += 1
         # Delete
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             # remove the current initial condition
-            if len(self._initialConditionEditor) > 1:
+            if len(self.initialConditionEditor) > 1:
                 # remove the current equation
-                item = self._listview.takeItem(ids)
-                del self._initialConditionEditor[ids]
+                item = listview.takeItem(ids)
+                del self.initialConditionEditor[ids]
 
                 # show the previous element
                 if ids > 0:
                     ids -= 1
-                self._listview.item(ids).setSelected(True)
+                listview.item(ids).setSelected(True)
                 layout = self._icWindow.layout()
                 item = layout.takeAt(1)
                 item.widget().close()
-                de = self._initialConditionEditor[ids]
+                de = self.initialConditionEditor[ids]
                 layout.insertWidget(1, de, stretch=5)
                 de.show()
                 self._icWindow.setWindowTitle(de.nameEdit.text())
             else:
                 # remove the last element
-                del self._initialConditionEditor[ids]
-                self._initialConditionEditor = []
+                del self.initialConditionEditor[ids]
+                self.initialConditionEditor = []
                 # close the window
                 self._icWindow.hide()
 
-    def _boundaryConditionEditorFinishedSlot(self, signal, ids):
+    def boundaryConditionEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the boundary condition
         settings.
 
@@ -701,13 +575,13 @@ class ElmerWindowHandler():
             ID of the body force set
         """
         # check if already in the storage and retrieve it
-        for bc in self._boundaryConditionEditor:
+        for bc in self.boundaryConditionEditor:
             temp = bc.ID
             if temp == ids:
-                ids = self._boundaryConditionEditor.index(bc)
+                ids = self.boundaryConditionEditor.index(bc)
                 break
 
-        listview = self._listview
+        listview = self._bcWindow.layout().itemAt(0).widget()
 
         # check OK-Button or Apply-Button
         signalOK = False
@@ -718,7 +592,7 @@ class ElmerWindowHandler():
         # OK or Apply
         if(signalOK):
             item = listview.item(ids)
-            de = self._boundaryConditionEditor[ids]
+            de = self.boundaryConditionEditor[ids]
             bcName = str(de.nameEdit.text()).strip()
             if not bcName:
                 sys.stdout.write("Boundary Condition\n")
@@ -740,12 +614,12 @@ class ElmerWindowHandler():
             current = self._bcCurrent
             de = dynamiceditor.DynamicEditor()
             # put new instance into storage
-            self._boundaryConditionEditor.append(de)
+            self.boundaryConditionEditor.append(de)
             # populate tabs
             de.setupTabs(self._elmerDefs, "BoundaryCondition", current)
             de.applyButton.setText("Apply")
             de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self._boundaryConditionEditorFinishedSlot)
+            de.dynamicEditorReady[int, int].connect(self.boundaryConditionEditorFinishedSlot)
 
             # clear right side of layout and at the new dynamic editor
             item = layout.takeAt(1)
@@ -755,39 +629,39 @@ class ElmerWindowHandler():
             # add item to list
             item = QtGui.QListWidgetItem()
             item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
+            listview.addItem(item)
             self._bcWindow.setWindowTitle(de.nameEdit.text())
             # set new as selected
-            count = len(self._boundaryConditionEditor)
-            self._listview.item(count - 1).setSelected(True)
+            count = len(self.boundaryConditionEditor)
+            listview.item(count - 1).setSelected(True)
             self._bcCurrent += 1
         # Delete
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             # remove the current boundary condition
-            if len(self._boundaryConditionEditor) > 1:
+            if len(self.boundaryConditionEditor) > 1:
                 # remove the current equation
-                item = self._listview.takeItem(ids)
-                del self._boundaryConditionEditor[ids]
+                item = listview.takeItem(ids)
+                del self.boundaryConditionEditor[ids]
 
                 # show the previous element
                 if ids > 0:
                     ids -= 1
-                self._listview.item(ids).setSelected(True)
+                listview.item(ids).setSelected(True)
                 layout = self._bcWindow.layout()
                 item = layout.takeAt(1)
                 item.widget().close()
-                de = self._boundaryConditionEditor[ids]
+                de = self.boundaryConditionEditor[ids]
                 layout.insertWidget(1, de, stretch=5)
                 de.show()
                 self._bcWindow.setWindowTitle(de.nameEdit.text())
             else:
                 # remove the last element
-                del self._boundaryConditionEditor[ids]
-                self._boundaryConditionEditor = []
+                del self.boundaryConditionEditor[ids]
+                self.boundaryConditionEditor = []
                 # close the window
                 self._bcWindow.hide()
 
-    def _matEditorFinishedSlot(self, signal, ids):
+    def matEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the material settings.
 
         Args:
@@ -798,13 +672,13 @@ class ElmerWindowHandler():
             ID of the body force set
         """
         # check if already in the storage and retrieve it
-        for mat in self._materialEditor:
+        for mat in self.materialEditor:
             temp = mat.ID
             if temp == ids:
-                ids = self._materialEditor.index(mat)
+                ids = self.materialEditor.index(mat)
                 break
 
-        listview = self._listview
+        listview = self._matWindow.layout().itemAt(0).widget()
 
         # check OK-Button or Apply-Button
         signalOK = False
@@ -815,7 +689,7 @@ class ElmerWindowHandler():
         # OK or Apply
         if(signalOK):
             item = listview.item(ids)
-            de = self._materialEditor[ids]
+            de = self.materialEditor[ids]
             matName = str(de.nameEdit.text()).strip()
             if not matName:
                 sys.stdout.write("Material Name\n")
@@ -837,12 +711,12 @@ class ElmerWindowHandler():
             current = self._matCurrent
             de = dynamiceditor.DynamicEditor()
             # put new instance into storage
-            self._materialEditor.append(de)
+            self.materialEditor.append(de)
             # populate tabs
             de.setupTabs(self._elmerDefs, "Material", current)
             de.applyButton.setText("Apply")
             de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self._matEditorFinishedSlot)
+            de.dynamicEditorReady[int, int].connect(self.matEditorFinishedSlot)
             de.spareButton.setText("Show Material Library")
             de.spareButton.show()
             de.dynamicEditorSpareButtonClicked[int, int].connect(self._showMaterialLibrary)
@@ -855,39 +729,39 @@ class ElmerWindowHandler():
             # add item to list
             item = QtGui.QListWidgetItem()
             item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
+            listview.addItem(item)
             self._matWindow.setWindowTitle(de.nameEdit.text())
             # set new as selected
-            count = len(self._materialEditor)
-            self._listview.item(count - 1).setSelected(True)
+            count = len(self.materialEditor)
+            listview.item(count - 1).setSelected(True)
             self._matCurrent += 1
         # Delete
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             # remove the current material
-            if len(self._materialEditor) > 1:
+            if len(self.materialEditor) > 1:
                 # remove the current element
-                item = self._listview.takeItem(ids)
-                del self._materialEditor[ids]
+                item = listview.takeItem(ids)
+                del self.materialEditor[ids]
 
                 # show the previous element
                 if ids > 1:
                     ids -= 1
-                self._listview.item(ids).setSelected(True)
+                listview.item(ids).setSelected(True)
                 layout = self._matWindow.layout()
                 item = layout.takeAt(1)
                 item.widget().close()
-                de = self._materialEditor[ids]
+                de = self.materialEditor[ids]
                 layout.insertWidget(1, de, stretch=5)
                 de.show()
                 self._matWindow.setWindowTitle(de.nameEdit.text())
             else:
                 # remove the current element
-                del self._materialEditor[ids]
-                self._materialEditor = []
+                del self.materialEditor[ids]
+                self.materialEditor = []
                 # close the window
                 self._matWindow.hide()
 
-    def _pdeEditorFinishedSlot(self, signal, ids):
+    def pdeEditorFinishedSlot(self, signal, ids):
         """Method for handling the button events in the equation settings.
 
         Args:
@@ -898,13 +772,13 @@ class ElmerWindowHandler():
             ID of the body force set
         """
         # check if already in the storage and retrieve it
-        for eq in self._equationEditor:
+        for eq in self.equationEditor:
             temp = eq.ID
             if temp == ids:
-                ids = self._equationEditor.index(eq)
+                ids = self.equationEditor.index(eq)
                 break
 
-        listview = self._listview
+        listview = self._eqWindow.layout().itemAt(0).widget()
 
         # check OK-Button or Apply-Button
         signalOK = False
@@ -915,7 +789,7 @@ class ElmerWindowHandler():
         # OK or Apply
         if(signalOK):
             item = listview.item(ids)
-            de = self._equationEditor[ids]
+            de = self.equationEditor[ids]
             equationName = str(de.nameEdit.text()).strip()
             if not equationName:
                 sys.stdout.write("No equation name\n")
@@ -937,12 +811,12 @@ class ElmerWindowHandler():
             current = self._eqCurrent
             de = dynamiceditor.DynamicEditor()
             # put new instance into storage
-            self._equationEditor.append(de)
+            self.equationEditor.append(de)
             # populate tabs
             de.setupTabs(self._elmerDefs, "Equation", current)
             de.applyButton.setText("Apply")
             de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self._pdeEditorFinishedSlot)
+            de.dynamicEditorReady[int, int].connect(self.pdeEditorFinishedSlot)
             de.spareButton.setText("Edit Solver Settings")
             de.spareButton.show()
             de.dynamicEditorSpareButtonClicked[int, int].connect(self._editNumericalMethods)
@@ -955,37 +829,206 @@ class ElmerWindowHandler():
             # add item to list
             item = QtGui.QListWidgetItem()
             item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
+            listview.addItem(item)
             # set new as selected
-            count = len(self._equationEditor)
-            self._listview.item(count - 1).setSelected(True)
+            count = len(self.equationEditor)
+            listview.item(count - 1).setSelected(True)
             self._eqWindow.setWindowTitle(de.nameEdit.text())
             self._eqCurrent += 1
         # Delete
         elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
             # remove the current equation editor
-            if len(self._equationEditor) > 1:
+            if len(self.equationEditor) > 1:
                 # remove the current equation
-                item = self._listview.takeItem(ids)
-                del self._equationEditor[ids]
+                item = listview.takeItem(ids)
+                del self.equationEditor[ids]
 
                 # show the previous equation
                 if ids > 0:
                     ids -= 1
-                self._listview.item(ids).setSelected(True)
+                listview.item(ids).setSelected(True)
                 layout = self._eqWindow.layout()
                 item = layout.takeAt(1)
                 item.widget().close()
-                de = self._equationEditor[ids]
+                de = self.equationEditor[ids]
                 layout.insertWidget(1, de, stretch=5)
                 de.show()
                 self._eqWindow.setWindowTitle(de.nameEdit.text())
             else:
                 # remove the current equation
-                del self._equationEditor[ids]
-                self._equationEditor = []
+                del self.equationEditor[ids]
+                self.equationEditor = []
                 # close the window
                 self._eqWindow.hide()
+
+    def sif_write(self):
+        """Sif file generator"""
+        # create new instance of SifWriter-class
+        sfw = sifwrite.SifWriter(self)
+        # check if mesh export directory has been defined
+        if not self.meshDirectory:
+            d = str(QtGui.QFileDialog.getExistingDirectory(parent=None, caption="Select Directory"))
+            if not d:
+                return
+            self.meshDirectory = os.path.normpath(d)
+        sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
+        # generate sif file
+        try:
+            sfw.writeSif()
+            self.sifFile = self.meshDirectory + os.sep + 'simulation.sif'
+            QtGui.QMessageBox.information(None, 'Success', "Sif-File written.")
+        except:
+            QtGui.QMessageBox.warning(None, 'Error',
+                                          "An error occured while writing the sif-file.")
+
+    def sif_read(self):
+        """Sif reader"""
+        # create new instance of SifReader-class
+        sr = sifreader.SifReader(self)
+        # get the sif-file to read
+        file = QtGui.QFileDialog.getOpenFileName(parent=None, caption="Select sif-File", filter='*.sif')
+        if qt4:
+            file = str(file)
+        else:
+            file = str(file[0])
+        if file == '':
+            return
+        try:
+            sr.readSif(file)
+            self.sifFile = file
+            self.meshDirectory = os.path.dirname(file)
+            QtGui.QMessageBox.information(None, 'Success', "Sif-File loaded.")
+        except:
+            QtGui.QMessageBox.warning(None, 'Error',
+                                          "An error occured while reading the sif-file.")
+
+    def _initGeneralSetup(self):
+        """Load the default general settings.
+
+        Return:
+        -------
+        gsWindow: GeneralSetup-class
+            Window for the general settings
+        """
+        ge = generalsetup.GeneralSetup(path_forms)
+        self.gsWindow = ge
+        return ge
+
+    def _boundaryPropertyChanged(self, boundaryPropertyEditor, name):
+        """Signal when boundary properties of 'name' have changed.
+
+        Args:
+        -----
+        boundaryPropertyEditor: BoundaryPropertyEditor-class
+            The current boundary property
+        name: str
+            Name of the object whose boundary properties have been changed.
+        """
+        self.elementProperties.update({str(name): boundaryPropertyEditor})
+
+    def _bodyPropertyChanged(self, bodyPropertyEditor, name):
+        """Signal when body properties of 'name' have changed.
+
+        Args:
+        -----
+        boundaryPropertyEditor: BodyPropertyEditor-class
+            The current Body property
+        name: str
+            Name of the object whose body properties have been changed.
+        """
+        self.elementProperties.update({str(name): bodyPropertyEditor})
+
+    def _eqItemChanged(self, index):
+        """Method for changing the selected item in the equation editor view
+
+        Args:
+        -----
+        index: QModelIndex
+            index of the newly selected item.
+        """
+        # 'hide' the old editor == second element in layout
+        layout = self._eqWindow.layout()
+        item = layout.takeAt(1)
+        if item:
+            item.widget().close()
+        # 'show' the new editor == insert the selected editor
+        de = self.equationEditor[index.row()]
+        de.show()
+        layout.insertWidget(1, de, stretch=5)
+        self._eqWindow.setWindowTitle(de.nameEdit.text())
+
+    def _matItemChanged(self, index):
+        """Method for changing the selected item in the material editor view
+
+        Args:
+        -----
+        index: QModelIndex
+            index of the newly selected item.
+        """
+        # 'hide' the old editor == second element in layout
+        layout = self._matWindow.layout()
+        item = layout.takeAt(1)
+        item.widget().close()
+        # 'show' the new editor == insert the selected editor
+        de = self.materialEditor[index.row()]
+        layout.insertWidget(1, de, stretch=5)
+        de.show()
+        self._matWindow.setWindowTitle(de.nameEdit.text())
+
+    def _bfItemChanged(self, index):
+        """Method for changing the selected item in the body force editor view
+
+        Args:
+        -----
+        index: QModelIndex
+            index of the newly selected item.
+        """
+        # 'hide' the old editor == second element in layout
+        layout = self._bfWindow.layout()
+        item = layout.takeAt(1)
+        item.widget().close()
+        # 'show' the new editor == insert the selected editor
+        de = self.bodyForceEditor[index.row()]
+        layout.insertWidget(1, de, stretch=5)
+        de.show()
+        self._bfWindow.setWindowTitle(de.nameEdit.text())
+
+    def _icItemChanged(self, index):
+        """Method for changing the selected item in the body force editor view
+
+        Args:
+        -----
+        index: QModelIndex
+            index of the newly selected item.
+        """
+        # 'hide' the old editor == second element in layout
+        layout = self._icWindow.layout()
+        item = layout.takeAt(1)
+        item.widget().close()
+        # 'show' the new editor == insert the selected editor
+        de = self.initialConditionEditor[index.row()]
+        layout.insertWidget(1, de, stretch=5)
+        de.show()
+        self._icWindow.setWindowTitle(de.nameEdit.text())
+
+    def _bcItemChanged(self, index):
+        """Method for changing the selected item in the boundary condition
+        editor view
+
+        Args:
+        -----
+        index: QModelIndex
+            index of the newly selected item.
+        """
+        # 'hide' the old editor == second element in layout
+        layout = self._bcWindow.layout()
+        item = layout.takeAt(1)
+        item.widget().close()
+        # 'show' the new editor == insert the selected editor
+        de = self.boundaryConditionEditor[index.row()]
+        layout.insertWidget(1, de, stretch=5)
+        de.show()
+        self._bcWindow.setWindowTitle(de.nameEdit.text())
 
     def _showMaterialLibrary(self, current, ids):
         """Opens the material library and connects it to the currently
@@ -998,7 +1041,7 @@ class ElmerWindowHandler():
         ids: int
             ID of the current material
         """
-        self._materialLibrary.editor = self._materialEditor[ids]
+        self._materialLibrary.editor = self.materialEditor[ids]
         self._materialLibrary.elmerDefs = self._elmerDefs
         self._materialLibrary.show()
 
@@ -1017,7 +1060,7 @@ class ElmerWindowHandler():
 
         title = ""
         # get active tab in the currently opened equation set
-        for eq in self._equationEditor:
+        for eq in self.equationEditor:
             if eq.ID == ids:
                 title = eq.tabWidget.tabText(current)
                 break
@@ -1028,16 +1071,16 @@ class ElmerWindowHandler():
             return
 
         # if tab is not yet in list, resize list and copy previous items
-        if(current >= len(self._solverParameterEditor)):
+        if(current >= len(self.solverParameterEditor)):
             tmp = (current + 1) * [None]
-            for idx, element in enumerate(self._solverParameterEditor):
+            for idx, element in enumerate(self.solverParameterEditor):
                 tmp[idx] = element
-            self._solverParameterEditor = tmp
+            self.solverParameterEditor = tmp
         # create a new instane of the Solver settings and put it into storage
-        if not self._solverParameterEditor[current]:
-            self._solverParameterEditor[current] = solverparameters.SolverParameterEditor(path_forms)
+        if not self.solverParameterEditor[current]:
+            self.solverParameterEditor[current] = solverparameters.SolverParameterEditor(path_forms)
 
-        spe = self._solverParameterEditor[current]
+        spe = self.solverParameterEditor[current]
         spe.setWindowTitle("Solver control for {}".format(title))
         spe.solverName = title
 
@@ -1090,16 +1133,3 @@ class ElmerWindowHandler():
 
         self._elmerDefs = QtXml.QDomDocument()
         self._elmerDefs.setContent(temp)
-
-
-if __name__ == "__main__":
-    path = os.path.dirname(os.path.abspath(__file__))
-    path_forms = path + os.sep + "forms" +  os.sep
-    path_edfs = path + os.sep + "edf" + os.sep
-    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
-    app = QtGui.QApplication(sys.argv)
-    ewh = elmerWindowHandler()
-    sp = ewh.showAddEquation()
-    #sp = ewh.showSolverParametersEditor()
-    #sp.show()
-    sys.exit(app.exec_())
