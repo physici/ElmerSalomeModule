@@ -11,12 +11,15 @@ Class changes appearance according to provide edf-xml document
 # required to get the Python 2 behavior of QT
 # see https://stackoverflow.com/a/21223060
 import sip
+qt4 = False
 try:
     from PyQt4 import QtGui
     from PyQt4.QtGui import QFont
     from PyQt4.QtGui import QFontMetrics
     from PyQt4 import QtXml
     from PyQt4 import QtCore
+    if sip.getapi('QVariant') == 1:
+        qt4 = True
 except ImportError:
     from PyQt5 import QtWidgets as QtGui
     from PyQt5.QtGui import QFont
@@ -389,7 +392,7 @@ class DynamicEditor(QtGui.QWidget):
             check state of the CheckBox
         """
         self._param = QtXml.QDomElement()
-        if sip.getapi('QVariant') == 1:
+        if qt4:
             qs = str(self.sender().property("dom address").toPyObject())
         else:
             qs = str(self.sender().property("dom address"))
@@ -432,7 +435,7 @@ class DynamicEditor(QtGui.QWidget):
             new contents of text box
         """
         self._param = QtXml.QDomElement()
-        if sip.getapi('QVariant') == 1:
+        if qt4:
             qs = str(self.sender().property("dom address").toPyObject())
         else:
             qs = str(self.sender().property("dom address"))
@@ -462,7 +465,7 @@ class DynamicEditor(QtGui.QWidget):
             index of the selection
         """
         select = self.sender().itemText(select)
-        if sip.getapi('QVariant') == 1:
+        if qt4:
             qs = str(self.sender().property("dom address").toPyObject())
         else:
             qs = str(self.sender().property("dom address"))

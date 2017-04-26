@@ -6,10 +6,12 @@ Created on Sat Sep  3 14:31:15 2016
 
 Main class for Elmer functionality
 """
+qt4 = False
 try:
     from PyQt4 import QtGui
     from PyQt4 import QtXml
     from PyQt4 import QtCore
+    qt4 = True
 except ImportError:
     from PyQt5 import QtWidgets as QtGui
     from PyQt5 import QtXml
@@ -30,6 +32,7 @@ import bodypropertyeditor
 import boundarypropertyeditor
 import materiallibrary
 import sifwrite
+import sifreader
 
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + os.sep + "forms" + os.sep
@@ -192,7 +195,7 @@ class ElmerWindowHandler():
 
         # connect to slot
         be.bodyPropertyEditorApply.connect(self._bodyPropertyChanged)
-        
+
         if visible:
             be.show()
         self._window = be
@@ -222,7 +225,7 @@ class ElmerWindowHandler():
 
     def showAddEquation(self, visible=True):
         """Show Equation settings window
-		
+
 		Args:
 		-----
 		visible: bool, optional
@@ -323,10 +326,10 @@ class ElmerWindowHandler():
             # create a horizontal split layout
             self._icWindow = QtGui.QWidget()
             layout = QtGui.QHBoxLayout()
-            self._listview = QtGui.QListWidget()
-            self._listview.clicked[QtCore.QModelIndex].connect(self._icItemChanged)
-            self._listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-            layout.addWidget(self._listview, stretch=1)
+            listview = QtGui.QListWidget()
+            listview.clicked[QtCore.QModelIndex].connect(self._icItemChanged)
+            listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+            layout.addWidget(listview, stretch=1)
             self._icWindow.setWindowTitle("Initial Condition settings")
             self._icWindow.setLayout(layout)
             self.initialConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
@@ -350,10 +353,10 @@ class ElmerWindowHandler():
             # create a horizontal split layout
             self._bcWindow = QtGui.QWidget()
             layout = QtGui.QHBoxLayout()
-            self._listview = QtGui.QListWidget()
-            self._listview.clicked[QtCore.QModelIndex].connect(self._bcItemChanged)
-            self._listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-            layout.addWidget(self._listview, stretch=1)
+            listview = QtGui.QListWidget()
+            listview.clicked[QtCore.QModelIndex].connect(self._bcItemChanged)
+            listview.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+            layout.addWidget(listview, stretch=1)
             self._bcWindow.setWindowTitle("Boundary Condition settings")
             self._bcWindow.setLayout(layout)
             self.boundaryConditionEditorFinishedSlot(dynamiceditor.MatTypes.MAT_NEW, 0)
@@ -364,6 +367,499 @@ class ElmerWindowHandler():
                 self._bcWindow.show()
 
         return self._bcWindow
+
+    def bodyForceEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the body force settings.
+
+        Args:
+        -----
+        signal: int
+            Type of button clicked
+        ids: int
+            ID of the body force set
+        """
+        # check if already in the storage and retrieve it
+        for bf in self.bodyForceEditor:
+            temp = bf.ID
+            if temp == ids:
+                ids = self.bodyForceEditor.index(bf)
+                break
+
+        listview = self._bfWindow.layout().itemAt(0).widget()
+
+        # check OK-Button or Apply-Button
+        signalOK = False
+        if(signal == dynamiceditor.MatTypes.MAT_OK or
+           signal == dynamiceditor.MatTypes.MAT_APPLY):
+            signalOK = True
+
+        # OK or Apply
+        if(signalOK):
+            item = listview.item(ids)
+            de = self.bodyForceEditor[ids]
+            bfName = str(de.nameEdit.text()).strip()
+            if not bfName:
+                sys.stdout.write("Body force\n")
+                sys.stdout.flush()
+                return
+            else:
+                item.setText(bfName)
+                self._bfWindow.setWindowTitle(bfName)
+                # hide window, when OK
+                if signal == dynamiceditor.MatTypes.MAT_OK:
+                    self._bfWindow.hide()
+        # New -> create new Body Force
+        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
+            # get window and layout
+            window = self._bfWindow
+            layout = window.layout()
+
+            # new instance of the dynamic editor
+            current = self._bfCurrent
+            de = dynamiceditor.DynamicEditor()
+            # put new instance into storage
+            self.bodyForceEditor.append(de)
+            # populate tabs
+            de.setupTabs(self._elmerDefs, "BodyForce", current)
+            de.applyButton.setText("Apply")
+            de.discardButton.setText("Delete")
+            de.dynamicEditorReady[int, int].connect(self.bodyForceEditorFinishedSlot)
+
+            # clear right side of layout and at the new dynamic editor
+            item = layout.takeAt(1)
+            if item is not None:
+                item.widget().close()
+            layout.addWidget(de, stretch=5)
+            # add item to list
+            item = QtGui.QListWidgetItem()
+            item.setText(de.nameEdit.text())
+            listview.addItem(item)
+            self._bfWindow.setWindowTitle(de.nameEdit.text())
+            # set new as selected
+            count = len(self.bodyForceEditor)
+            listview.item(count - 1).setSelected(True)
+            self._bfCurrent += 1
+        # Delete
+        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
+            # remove the current body force
+            if len(self.bodyForceEditor) > 1:
+                # remove the current element
+                item = listview.takeItem(ids)
+                del self.bodyForceEditor[ids]
+
+                # show the previous element
+                if ids > 0:
+                    ids -= 1
+                listview.item(ids).setSelected(True)
+                layout = self._bfWindow.layout()
+                item = layout.takeAt(1)
+                item.widget().close()
+                de = self.bodyForceEditor[ids]
+                layout.insertWidget(1, de, stretch=5)
+                de.show()
+                self._bfWindow.setWindowTitle(de.nameEdit.text())
+            else:
+                # remove the last element
+                del self.bodyForceEditor[ids]
+                self.bodyForceEditor = []
+                # close the window
+                self._bfWindow.hide()
+
+    def initialConditionEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the initial condition
+        settings.
+
+        Args:
+        -----
+        signal: int
+            Type of button clicked
+        ids: int
+            ID of the body force set
+        """
+        # check if already in the storage and retrieve it
+        for ic in self.initialConditionEditor:
+            temp = ic.ID
+            if temp == ids:
+                ids = self.initialConditionEditor.index(ic)
+                break
+
+        listview = self._icWindow.layout().itemAt(0).widget()
+
+        # check OK-Button or Apply-Button
+        signalOK = False
+        if(signal == dynamiceditor.MatTypes.MAT_OK or
+           signal == dynamiceditor.MatTypes.MAT_APPLY):
+            signalOK = True
+
+        # OK or Apply
+        if(signalOK):
+            item = listview.item(ids)
+            de = self.initialConditionEditor[ids]
+            icName = str(de.nameEdit.text()).strip()
+            if not icName:
+                sys.stdout.write("Initial Condition\n")
+                sys.stdout.flush()
+                return
+            else:
+                item.setText(icName)
+                self._icWindow.setWindowTitle(icName)
+                # hide window, when OK
+                if signal == dynamiceditor.MatTypes.MAT_OK:
+                    self._icWindow.hide()
+        # New -> create new Initial condition
+        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
+            # get window and layout
+            window = self._icWindow
+            layout = window.layout()
+
+            # new instance of the dynamic editor
+            current = self._icCurrent
+            de = dynamiceditor.DynamicEditor()
+            # put new instance into storage
+            self.initialConditionEditor.append(de)
+            # populate tabs
+            de.setupTabs(self._elmerDefs, "InitialCondition", current)
+            de.applyButton.setText("Apply")
+            de.discardButton.setText("Delete")
+            de.dynamicEditorReady[int, int].connect(self.initialConditionEditorFinishedSlot)
+
+            # clear right side of layout and at the new dynamic editor
+            item = layout.takeAt(1)
+            if item is not None:
+                item.widget().close()
+            layout.addWidget(de, stretch=5)
+            # add item to list
+            item = QtGui.QListWidgetItem()
+            item.setText(de.nameEdit.text())
+            listview.addItem(item)
+            self._icWindow.setWindowTitle(de.nameEdit.text())
+            # set new as selected
+            count = len(self.initialConditionEditor)
+            listview.item(count - 1).setSelected(True)
+            self._icCurrent += 1
+        # Delete
+        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
+            # remove the current initial condition
+            if len(self.initialConditionEditor) > 1:
+                # remove the current equation
+                item = listview.takeItem(ids)
+                del self.initialConditionEditor[ids]
+
+                # show the previous element
+                if ids > 0:
+                    ids -= 1
+                listview.item(ids).setSelected(True)
+                layout = self._icWindow.layout()
+                item = layout.takeAt(1)
+                item.widget().close()
+                de = self.initialConditionEditor[ids]
+                layout.insertWidget(1, de, stretch=5)
+                de.show()
+                self._icWindow.setWindowTitle(de.nameEdit.text())
+            else:
+                # remove the last element
+                del self.initialConditionEditor[ids]
+                self.initialConditionEditor = []
+                # close the window
+                self._icWindow.hide()
+
+    def boundaryConditionEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the boundary condition
+        settings.
+
+        Args:
+        -----
+        signal: int
+            Type of button clicked
+        ids: int
+            ID of the body force set
+        """
+        # check if already in the storage and retrieve it
+        for bc in self.boundaryConditionEditor:
+            temp = bc.ID
+            if temp == ids:
+                ids = self.boundaryConditionEditor.index(bc)
+                break
+
+        listview = self._bcWindow.layout().itemAt(0).widget()
+
+        # check OK-Button or Apply-Button
+        signalOK = False
+        if(signal == dynamiceditor.MatTypes.MAT_OK or
+           signal == dynamiceditor.MatTypes.MAT_APPLY):
+            signalOK = True
+
+        # OK or Apply
+        if(signalOK):
+            item = listview.item(ids)
+            de = self.boundaryConditionEditor[ids]
+            bcName = str(de.nameEdit.text()).strip()
+            if not bcName:
+                sys.stdout.write("Boundary Condition\n")
+                sys.stdout.flush()
+                return
+            else:
+                item.setText(bcName)
+                self._bcWindow.setWindowTitle(bcName)
+                # hide window, when OK
+                if signal == dynamiceditor.MatTypes.MAT_OK:
+                    self._bcWindow.hide()
+        # New -> create new boundary condition
+        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
+            # get window and layout
+            window = self._bcWindow
+            layout = window.layout()
+
+            # new instance of the dynamic editor
+            current = self._bcCurrent
+            de = dynamiceditor.DynamicEditor()
+            # put new instance into storage
+            self.boundaryConditionEditor.append(de)
+            # populate tabs
+            de.setupTabs(self._elmerDefs, "BoundaryCondition", current)
+            de.applyButton.setText("Apply")
+            de.discardButton.setText("Delete")
+            de.dynamicEditorReady[int, int].connect(self.boundaryConditionEditorFinishedSlot)
+
+            # clear right side of layout and at the new dynamic editor
+            item = layout.takeAt(1)
+            if item is not None:
+                item.widget().close()
+            layout.addWidget(de, stretch=5)
+            # add item to list
+            item = QtGui.QListWidgetItem()
+            item.setText(de.nameEdit.text())
+            listview.addItem(item)
+            self._bcWindow.setWindowTitle(de.nameEdit.text())
+            # set new as selected
+            count = len(self.boundaryConditionEditor)
+            listview.item(count - 1).setSelected(True)
+            self._bcCurrent += 1
+        # Delete
+        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
+            # remove the current boundary condition
+            if len(self.boundaryConditionEditor) > 1:
+                # remove the current equation
+                item = listview.takeItem(ids)
+                del self.boundaryConditionEditor[ids]
+
+                # show the previous element
+                if ids > 0:
+                    ids -= 1
+                listview.item(ids).setSelected(True)
+                layout = self._bcWindow.layout()
+                item = layout.takeAt(1)
+                item.widget().close()
+                de = self.boundaryConditionEditor[ids]
+                layout.insertWidget(1, de, stretch=5)
+                de.show()
+                self._bcWindow.setWindowTitle(de.nameEdit.text())
+            else:
+                # remove the last element
+                del self.boundaryConditionEditor[ids]
+                self.boundaryConditionEditor = []
+                # close the window
+                self._bcWindow.hide()
+
+    def matEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the material settings.
+
+        Args:
+        -----
+        signal: int
+            Type of button clicked
+        ids: int
+            ID of the body force set
+        """
+        # check if already in the storage and retrieve it
+        for mat in self.materialEditor:
+            temp = mat.ID
+            if temp == ids:
+                ids = self.materialEditor.index(mat)
+                break
+
+        listview = self._matWindow.layout().itemAt(0).widget()
+
+        # check OK-Button or Apply-Button
+        signalOK = False
+        if(signal == dynamiceditor.MatTypes.MAT_OK or
+           signal == dynamiceditor.MatTypes.MAT_APPLY):
+            signalOK = True
+
+        # OK or Apply
+        if(signalOK):
+            item = listview.item(ids)
+            de = self.materialEditor[ids]
+            matName = str(de.nameEdit.text()).strip()
+            if not matName:
+                sys.stdout.write("Material Name\n")
+                sys.stdout.flush()
+                return
+            else:
+                item.setText(matName)
+                self._matWindow.setWindowTitle(matName)
+                # hide window, when OK
+                if signal == dynamiceditor.MatTypes.MAT_OK:
+                    self._matWindow.hide()
+        # New -> create new Material
+        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
+            # get window and layout
+            window = self._matWindow
+            layout = window.layout()
+
+            # new instance of the dynamic editor
+            current = self._matCurrent
+            de = dynamiceditor.DynamicEditor()
+            # put new instance into storage
+            self.materialEditor.append(de)
+            # populate tabs
+            de.setupTabs(self._elmerDefs, "Material", current)
+            de.applyButton.setText("Apply")
+            de.discardButton.setText("Delete")
+            de.dynamicEditorReady[int, int].connect(self.matEditorFinishedSlot)
+            de.spareButton.setText("Show Material Library")
+            de.spareButton.show()
+            de.dynamicEditorSpareButtonClicked[int, int].connect(self._showMaterialLibrary)
+
+            # clear right side of layout and at the new dynamic editor
+            item = layout.takeAt(1)
+            if item is not None:
+                item.widget().close()
+            layout.addWidget(de, stretch=5)
+            # add item to list
+            item = QtGui.QListWidgetItem()
+            item.setText(de.nameEdit.text())
+            listview.addItem(item)
+            self._matWindow.setWindowTitle(de.nameEdit.text())
+            # set new as selected
+            count = len(self.materialEditor)
+            listview.item(count - 1).setSelected(True)
+            self._matCurrent += 1
+        # Delete
+        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
+            # remove the current material
+            if len(self.materialEditor) > 1:
+                # remove the current element
+                item = listview.takeItem(ids)
+                del self.materialEditor[ids]
+
+                # show the previous element
+                if ids > 1:
+                    ids -= 1
+                listview.item(ids).setSelected(True)
+                layout = self._matWindow.layout()
+                item = layout.takeAt(1)
+                item.widget().close()
+                de = self.materialEditor[ids]
+                layout.insertWidget(1, de, stretch=5)
+                de.show()
+                self._matWindow.setWindowTitle(de.nameEdit.text())
+            else:
+                # remove the current element
+                del self.materialEditor[ids]
+                self.materialEditor = []
+                # close the window
+                self._matWindow.hide()
+
+    def pdeEditorFinishedSlot(self, signal, ids):
+        """Method for handling the button events in the equation settings.
+
+        Args:
+        -----
+        signal: int
+            Type of button clicked
+        ids: int
+            ID of the body force set
+        """
+        # check if already in the storage and retrieve it
+        for eq in self.equationEditor:
+            temp = eq.ID
+            if temp == ids:
+                ids = self.equationEditor.index(eq)
+                break
+
+        listview = self._eqWindow.layout().itemAt(0).widget()
+
+        # check OK-Button or Apply-Button
+        signalOK = False
+        if(signal == dynamiceditor.MatTypes.MAT_OK or
+           signal == dynamiceditor.MatTypes.MAT_APPLY):
+            signalOK = True
+
+        # OK or Apply
+        if(signalOK):
+            item = listview.item(ids)
+            de = self.equationEditor[ids]
+            equationName = str(de.nameEdit.text()).strip()
+            if not equationName:
+                sys.stdout.write("No equation name\n")
+                sys.stdout.flush()
+                return
+            else:
+                item.setText(equationName)
+                self._eqWindow.setWindowTitle(equationName)
+                # hide window, when OK
+                if signal == dynamiceditor.MatTypes.MAT_OK:
+                    self._eqWindow.hide()
+        # New -> create new Equation
+        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
+            # get window and layout
+            window = self._eqWindow
+            layout = window.layout()
+
+            # new instance of the dynamic editor
+            current = self._eqCurrent
+            de = dynamiceditor.DynamicEditor()
+            # put new instance into storage
+            self.equationEditor.append(de)
+            # populate tabs
+            de.setupTabs(self._elmerDefs, "Equation", current)
+            de.applyButton.setText("Apply")
+            de.discardButton.setText("Delete")
+            de.dynamicEditorReady[int, int].connect(self.pdeEditorFinishedSlot)
+            de.spareButton.setText("Edit Solver Settings")
+            de.spareButton.show()
+            de.dynamicEditorSpareButtonClicked[int, int].connect(self._editNumericalMethods)
+
+            # clear right side of layout and at the new dynamic editor
+            item = layout.takeAt(1)
+            if item is not None:
+                item.widget().close()
+            layout.addWidget(de, stretch=5)
+            # add item to list
+            item = QtGui.QListWidgetItem()
+            item.setText(de.nameEdit.text())
+            listview.addItem(item)
+            # set new as selected
+            count = len(self.equationEditor)
+            listview.item(count - 1).setSelected(True)
+            self._eqWindow.setWindowTitle(de.nameEdit.text())
+            self._eqCurrent += 1
+        # Delete
+        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
+            # remove the current equation editor
+            if len(self.equationEditor) > 1:
+                # remove the current equation
+                item = listview.takeItem(ids)
+                del self.equationEditor[ids]
+
+                # show the previous equation
+                if ids > 0:
+                    ids -= 1
+                listview.item(ids).setSelected(True)
+                layout = self._eqWindow.layout()
+                item = layout.takeAt(1)
+                item.widget().close()
+                de = self.equationEditor[ids]
+                layout.insertWidget(1, de, stretch=5)
+                de.show()
+                self._eqWindow.setWindowTitle(de.nameEdit.text())
+            else:
+                # remove the current equation
+                del self.equationEditor[ids]
+                self.equationEditor = []
+                # close the window
+                self._eqWindow.hide()
 
     def sif_write(self):
         """Sif file generator"""
@@ -380,10 +876,31 @@ class ElmerWindowHandler():
         try:
             sfw.writeSif()
             self.sifFile = self.meshDirectory + os.sep + 'simulation.sif'
+            QtGui.QMessageBox.information(None, 'Success', "Sif-File written.")
         except:
             QtGui.QMessageBox.warning(None, 'Error',
                                           "An error occured while writing the sif-file.")
+
+    def sif_read(self):
+        """Sif reader"""
+        # create new instance of SifReader-class
+        sr = sifreader.SifReader(self)
+        # get the sif-file to read
+        file = QtGui.QFileDialog.getOpenFileName(parent=None, caption="Select sif-File", filter='*.sif')
+        if qt4:
+            file = str(file)
+        else:
+            file = str(file[0])
+        if file == '':
             return
+        try:
+            sr.readSif(file)
+            self.sifFile = file
+            self.meshDirectory = os.path.dirname(file)
+            QtGui.QMessageBox.information(None, 'Success', "Sif-File loaded.")
+        except:
+            QtGui.QMessageBox.warning(None, 'Error',
+                                          "An error occured while reading the sif-file.")
 
     def _initGeneralSetup(self):
         """Load the default general settings.
@@ -513,499 +1030,6 @@ class ElmerWindowHandler():
         de.show()
         self._bcWindow.setWindowTitle(de.nameEdit.text())
 
-    def bodyForceEditorFinishedSlot(self, signal, ids):
-        """Method for handling the button events in the body force settings.
-
-        Args:
-        -----
-        signal: int
-            Type of button clicked
-        ids: int
-            ID of the body force set
-        """
-        # check if already in the storage and retrieve it
-        for bf in self.bodyForceEditor:
-            temp = bf.ID
-            if temp == ids:
-                ids = self.bodyForceEditor.index(bf)
-                break
-
-        listview = self._listview
-
-        # check OK-Button or Apply-Button
-        signalOK = False
-        if(signal == dynamiceditor.MatTypes.MAT_OK or
-           signal == dynamiceditor.MatTypes.MAT_APPLY):
-            signalOK = True
-
-        # OK or Apply
-        if(signalOK):
-            item = listview.item(ids)
-            de = self.bodyForceEditor[ids]
-            bfName = str(de.nameEdit.text()).strip()
-            if not bfName:
-                sys.stdout.write("Body force\n")
-                sys.stdout.flush()
-                return
-            else:
-                item.setText(bfName)
-                self._bfWindow.setWindowTitle(bfName)
-                # hide window, when OK
-                if signal == dynamiceditor.MatTypes.MAT_OK:
-                    self._bfWindow.hide()
-        # New -> create new Body Force
-        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            # get window and layout
-            window = self._bfWindow
-            layout = window.layout()
-
-            # new instance of the dynamic editor
-            current = self._bfCurrent
-            de = dynamiceditor.DynamicEditor()
-            # put new instance into storage
-            self.bodyForceEditor.append(de)
-            # populate tabs
-            de.setupTabs(self._elmerDefs, "BodyForce", current)
-            de.applyButton.setText("Apply")
-            de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self.bodyForceEditorFinishedSlot)
-
-            # clear right side of layout and at the new dynamic editor
-            item = layout.takeAt(1)
-            if item is not None:
-                item.widget().close()
-            layout.addWidget(de, stretch=5)
-            # add item to list
-            item = QtGui.QListWidgetItem()
-            item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
-            self._bfWindow.setWindowTitle(de.nameEdit.text())
-            # set new as selected
-            count = len(self.bodyForceEditor)
-            self._listview.item(count - 1).setSelected(True)
-            self._bfCurrent += 1
-        # Delete
-        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            # remove the current body force
-            if len(self.bodyForceEditor) > 1:
-                # remove the current element
-                item = self._listview.takeItem(ids)
-                del self.bodyForceEditor[ids]
-
-                # show the previous element
-                if ids > 0:
-                    ids -= 1
-                self._listview.item(ids).setSelected(True)
-                layout = self._bfWindow.layout()
-                item = layout.takeAt(1)
-                item.widget().close()
-                de = self.bodyForceEditor[ids]
-                layout.insertWidget(1, de, stretch=5)
-                de.show()
-                self._bfWindow.setWindowTitle(de.nameEdit.text())
-            else:
-                # remove the last element
-                del self.bodyForceEditor[ids]
-                self.bodyForceEditor = []
-                # close the window
-                self._bfWindow.hide()
-
-    def initialConditionEditorFinishedSlot(self, signal, ids):
-        """Method for handling the button events in the initial condition
-        settings.
-
-        Args:
-        -----
-        signal: int
-            Type of button clicked
-        ids: int
-            ID of the body force set
-        """
-        # check if already in the storage and retrieve it
-        for ic in self.initialConditionEditor:
-            temp = ic.ID
-            if temp == ids:
-                ids = self.initialConditionEditor.index(ic)
-                break
-
-        listview = self._listview
-
-        # check OK-Button or Apply-Button
-        signalOK = False
-        if(signal == dynamiceditor.MatTypes.MAT_OK or
-           signal == dynamiceditor.MatTypes.MAT_APPLY):
-            signalOK = True
-
-        # OK or Apply
-        if(signalOK):
-            item = listview.item(ids)
-            de = self.initialConditionEditor[ids]
-            icName = str(de.nameEdit.text()).strip()
-            if not icName:
-                sys.stdout.write("Initial Condition\n")
-                sys.stdout.flush()
-                return
-            else:
-                item.setText(icName)
-                self._icWindow.setWindowTitle(icName)
-                # hide window, when OK
-                if signal == dynamiceditor.MatTypes.MAT_OK:
-                    self._icWindow.hide()
-        # New -> create new Initial condition
-        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            # get window and layout
-            window = self._icWindow
-            layout = window.layout()
-
-            # new instance of the dynamic editor
-            current = self._icCurrent
-            de = dynamiceditor.DynamicEditor()
-            # put new instance into storage
-            self.initialConditionEditor.append(de)
-            # populate tabs
-            de.setupTabs(self._elmerDefs, "InitialCondition", current)
-            de.applyButton.setText("Apply")
-            de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self.initialConditionEditorFinishedSlot)
-
-            # clear right side of layout and at the new dynamic editor
-            item = layout.takeAt(1)
-            if item is not None:
-                item.widget().close()
-            layout.addWidget(de, stretch=5)
-            # add item to list
-            item = QtGui.QListWidgetItem()
-            item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
-            self._icWindow.setWindowTitle(de.nameEdit.text())
-            # set new as selected
-            count = len(self.initialConditionEditor)
-            self._listview.item(count - 1).setSelected(True)
-            self._icCurrent += 1
-        # Delete
-        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            # remove the current initial condition
-            if len(self.initialConditionEditor) > 1:
-                # remove the current equation
-                item = self._listview.takeItem(ids)
-                del self.initialConditionEditor[ids]
-
-                # show the previous element
-                if ids > 0:
-                    ids -= 1
-                self._listview.item(ids).setSelected(True)
-                layout = self._icWindow.layout()
-                item = layout.takeAt(1)
-                item.widget().close()
-                de = self.initialConditionEditor[ids]
-                layout.insertWidget(1, de, stretch=5)
-                de.show()
-                self._icWindow.setWindowTitle(de.nameEdit.text())
-            else:
-                # remove the last element
-                del self.initialConditionEditor[ids]
-                self.initialConditionEditor = []
-                # close the window
-                self._icWindow.hide()
-
-    def boundaryConditionEditorFinishedSlot(self, signal, ids):
-        """Method for handling the button events in the boundary condition
-        settings.
-
-        Args:
-        -----
-        signal: int
-            Type of button clicked
-        ids: int
-            ID of the body force set
-        """
-        # check if already in the storage and retrieve it
-        for bc in self.boundaryConditionEditor:
-            temp = bc.ID
-            if temp == ids:
-                ids = self.boundaryConditionEditor.index(bc)
-                break
-
-        listview = self._listview
-
-        # check OK-Button or Apply-Button
-        signalOK = False
-        if(signal == dynamiceditor.MatTypes.MAT_OK or
-           signal == dynamiceditor.MatTypes.MAT_APPLY):
-            signalOK = True
-
-        # OK or Apply
-        if(signalOK):
-            item = listview.item(ids)
-            de = self.boundaryConditionEditor[ids]
-            bcName = str(de.nameEdit.text()).strip()
-            if not bcName:
-                sys.stdout.write("Boundary Condition\n")
-                sys.stdout.flush()
-                return
-            else:
-                item.setText(bcName)
-                self._bcWindow.setWindowTitle(bcName)
-                # hide window, when OK
-                if signal == dynamiceditor.MatTypes.MAT_OK:
-                    self._bcWindow.hide()
-        # New -> create new boundary condition
-        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            # get window and layout
-            window = self._bcWindow
-            layout = window.layout()
-
-            # new instance of the dynamic editor
-            current = self._bcCurrent
-            de = dynamiceditor.DynamicEditor()
-            # put new instance into storage
-            self.boundaryConditionEditor.append(de)
-            # populate tabs
-            de.setupTabs(self._elmerDefs, "BoundaryCondition", current)
-            de.applyButton.setText("Apply")
-            de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self.boundaryConditionEditorFinishedSlot)
-
-            # clear right side of layout and at the new dynamic editor
-            item = layout.takeAt(1)
-            if item is not None:
-                item.widget().close()
-            layout.addWidget(de, stretch=5)
-            # add item to list
-            item = QtGui.QListWidgetItem()
-            item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
-            self._bcWindow.setWindowTitle(de.nameEdit.text())
-            # set new as selected
-            count = len(self.boundaryConditionEditor)
-            self._listview.item(count - 1).setSelected(True)
-            self._bcCurrent += 1
-        # Delete
-        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            # remove the current boundary condition
-            if len(self.boundaryConditionEditor) > 1:
-                # remove the current equation
-                item = self._listview.takeItem(ids)
-                del self.boundaryConditionEditor[ids]
-
-                # show the previous element
-                if ids > 0:
-                    ids -= 1
-                self._listview.item(ids).setSelected(True)
-                layout = self._bcWindow.layout()
-                item = layout.takeAt(1)
-                item.widget().close()
-                de = self.boundaryConditionEditor[ids]
-                layout.insertWidget(1, de, stretch=5)
-                de.show()
-                self._bcWindow.setWindowTitle(de.nameEdit.text())
-            else:
-                # remove the last element
-                del self.boundaryConditionEditor[ids]
-                self.boundaryConditionEditor = []
-                # close the window
-                self._bcWindow.hide()
-
-    def matEditorFinishedSlot(self, signal, ids):
-        """Method for handling the button events in the material settings.
-
-        Args:
-        -----
-        signal: int
-            Type of button clicked
-        ids: int
-            ID of the body force set
-        """
-        # check if already in the storage and retrieve it
-        for mat in self.materialEditor:
-            temp = mat.ID
-            if temp == ids:
-                ids = self.materialEditor.index(mat)
-                break
-
-        listview = self._listview
-
-        # check OK-Button or Apply-Button
-        signalOK = False
-        if(signal == dynamiceditor.MatTypes.MAT_OK or
-           signal == dynamiceditor.MatTypes.MAT_APPLY):
-            signalOK = True
-
-        # OK or Apply
-        if(signalOK):
-            item = listview.item(ids)
-            de = self.materialEditor[ids]
-            matName = str(de.nameEdit.text()).strip()
-            if not matName:
-                sys.stdout.write("Material Name\n")
-                sys.stdout.flush()
-                return
-            else:
-                item.setText(matName)
-                self._matWindow.setWindowTitle(matName)
-                # hide window, when OK
-                if signal == dynamiceditor.MatTypes.MAT_OK:
-                    self._matWindow.hide()
-        # New -> create new Material
-        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            # get window and layout
-            window = self._matWindow
-            layout = window.layout()
-
-            # new instance of the dynamic editor
-            current = self._matCurrent
-            de = dynamiceditor.DynamicEditor()
-            # put new instance into storage
-            self.materialEditor.append(de)
-            # populate tabs
-            de.setupTabs(self._elmerDefs, "Material", current)
-            de.applyButton.setText("Apply")
-            de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self.matEditorFinishedSlot)
-            de.spareButton.setText("Show Material Library")
-            de.spareButton.show()
-            de.dynamicEditorSpareButtonClicked[int, int].connect(self._showMaterialLibrary)
-
-            # clear right side of layout and at the new dynamic editor
-            item = layout.takeAt(1)
-            if item is not None:
-                item.widget().close()
-            layout.addWidget(de, stretch=5)
-            # add item to list
-            item = QtGui.QListWidgetItem()
-            item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
-            self._matWindow.setWindowTitle(de.nameEdit.text())
-            # set new as selected
-            count = len(self.materialEditor)
-            self._listview.item(count - 1).setSelected(True)
-            self._matCurrent += 1
-        # Delete
-        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            # remove the current material
-            if len(self.materialEditor) > 1:
-                # remove the current element
-                item = self._listview.takeItem(ids)
-                del self.materialEditor[ids]
-
-                # show the previous element
-                if ids > 1:
-                    ids -= 1
-                self._listview.item(ids).setSelected(True)
-                layout = self._matWindow.layout()
-                item = layout.takeAt(1)
-                item.widget().close()
-                de = self.materialEditor[ids]
-                layout.insertWidget(1, de, stretch=5)
-                de.show()
-                self._matWindow.setWindowTitle(de.nameEdit.text())
-            else:
-                # remove the current element
-                del self.materialEditor[ids]
-                self.materialEditor = []
-                # close the window
-                self._matWindow.hide()
-
-    def pdeEditorFinishedSlot(self, signal, ids):
-        """Method for handling the button events in the equation settings.
-
-        Args:
-        -----
-        signal: int
-            Type of button clicked
-        ids: int
-            ID of the body force set
-        """
-        # check if already in the storage and retrieve it
-        for eq in self.equationEditor:
-            temp = eq.ID
-            if temp == ids:
-                ids = self.equationEditor.index(eq)
-                break
-
-        listview = self._listview
-
-        # check OK-Button or Apply-Button
-        signalOK = False
-        if(signal == dynamiceditor.MatTypes.MAT_OK or
-           signal == dynamiceditor.MatTypes.MAT_APPLY):
-            signalOK = True
-
-        # OK or Apply
-        if(signalOK):
-            item = listview.item(ids)
-            de = self.equationEditor[ids]
-            equationName = str(de.nameEdit.text()).strip()
-            if not equationName:
-                sys.stdout.write("No equation name\n")
-                sys.stdout.flush()
-                return
-            else:
-                item.setText(equationName)
-                self._eqWindow.setWindowTitle(equationName)
-                # hide window, when OK
-                if signal == dynamiceditor.MatTypes.MAT_OK:
-                    self._eqWindow.hide()
-        # New -> create new Equation
-        elif(signal == dynamiceditor.MatTypes.MAT_NEW):
-            # get window and layout
-            window = self._eqWindow
-            layout = window.layout()
-
-            # new instance of the dynamic editor
-            current = self._eqCurrent
-            de = dynamiceditor.DynamicEditor()
-            # put new instance into storage
-            self.equationEditor.append(de)
-            # populate tabs
-            de.setupTabs(self._elmerDefs, "Equation", current)
-            de.applyButton.setText("Apply")
-            de.discardButton.setText("Delete")
-            de.dynamicEditorReady[int, int].connect(self.pdeEditorFinishedSlot)
-            de.spareButton.setText("Edit Solver Settings")
-            de.spareButton.show()
-            de.dynamicEditorSpareButtonClicked[int, int].connect(self._editNumericalMethods)
-
-            # clear right side of layout and at the new dynamic editor
-            item = layout.takeAt(1)
-            if item is not None:
-                item.widget().close()
-            layout.addWidget(de, stretch=5)
-            # add item to list
-            item = QtGui.QListWidgetItem()
-            item.setText(de.nameEdit.text())
-            self._listview.addItem(item)
-            # set new as selected
-            count = len(self.equationEditor)
-            self._listview.item(count - 1).setSelected(True)
-            self._eqWindow.setWindowTitle(de.nameEdit.text())
-            self._eqCurrent += 1
-        # Delete
-        elif(signal == dynamiceditor.MatTypes.MAT_DELETE):
-            # remove the current equation editor
-            if len(self.equationEditor) > 1:
-                # remove the current equation
-                item = self._listview.takeItem(ids)
-                del self.equationEditor[ids]
-
-                # show the previous equation
-                if ids > 0:
-                    ids -= 1
-                self._listview.item(ids).setSelected(True)
-                layout = self._eqWindow.layout()
-                item = layout.takeAt(1)
-                item.widget().close()
-                de = self.equationEditor[ids]
-                layout.insertWidget(1, de, stretch=5)
-                de.show()
-                self._eqWindow.setWindowTitle(de.nameEdit.text())
-            else:
-                # remove the current equation
-                del self.equationEditor[ids]
-                self.equationEditor = []
-                # close the window
-                self._eqWindow.hide()
-
     def _showMaterialLibrary(self, current, ids):
         """Opens the material library and connects it to the currently
         active material
@@ -1109,16 +1133,3 @@ class ElmerWindowHandler():
 
         self._elmerDefs = QtXml.QDomDocument()
         self._elmerDefs.setContent(temp)
-
-
-if __name__ == "__main__":
-    path = os.path.dirname(os.path.abspath(__file__))
-    path_forms = path + os.sep + "forms" +  os.sep
-    path_edfs = path + os.sep + "edf" + os.sep
-    sys.path.append(r"C:\opt\SALOME-7.8.0-WIN64\PLUGINS\ElmerSalome")
-    app = QtGui.QApplication(sys.argv)
-    ewh = elmerWindowHandler()
-    sp = ewh.showAddEquation()
-    #sp = ewh.showSolverParametersEditor()
-    #sp.show()
-    sys.exit(app.exec_())

@@ -51,6 +51,8 @@ class SifWriter():
         widgetType = parameter.elem.attribute('Widget', 'Edit')
         if widgetType == 'Edit':
             sifValue = str(parameter.widget.text()).strip()
+            if 'Prandtl' in sifName: # elmer bug
+                return
             self._addSifLine(sifName, sifValue)
         elif widgetType == 'TextEdit':
             sifValue = parameter.widget.toPlainText()
@@ -126,8 +128,6 @@ class SifWriter():
         self._writeToSif('End')
         self._writeToSif('')
 
-        import pdb
-        pdb.set_trace()
         # makeBodyBlocks()
         count = 0
         for objName in self._ewh.elementProperties:
@@ -303,7 +303,7 @@ class SifWriter():
             idx += 1
             self._writeToSif('Equation ' + str(idx))
             self._writeToSif('  Name = "' + str(element.nameEdit.text()).strip() + '"')
-            for key, value in element.qhash.items():
+            for key, value in element.qhash.iteritems():
                 self._makeSifEntry(value)
             activeSolvers = []
             N_activeSolvers = 0
@@ -323,7 +323,7 @@ class SifWriter():
         for mat in self._ewh.materialEditor:
             self._addSifLine('Material ', str(mat.ID+1))
             self._addSifLine('  Name = ', '"'+str(mat.nameEdit.text()).strip()+'"')
-            for key, value in mat.qhash.items():
+            for key, value in mat.qhash.iteritems():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')
@@ -332,7 +332,7 @@ class SifWriter():
         for bf in self._ewh.bodyForceEditor:
             self._addSifLine('Body Force ', str(bf.ID+1))
             self._addSifLine('  Name = ', '"'+str(bf.nameEdit.text()).strip()+'"')
-            for key, value in bf.qhash.items():
+            for key, value in bf.qhash.iteritems():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')
@@ -352,7 +352,7 @@ class SifWriter():
     #                self._writeToSif('  Target Boundaries('+str(len(TargetBoundaries))+') = ' + bcStr )
     #                self._writeToSif('  Name = ' + '"'+str(bc.nameEdit.text()).strip()+'"')
                     self._writeToSif('  Name = ' + '"'+str(name).strip()+'"')
-                    for key, value in bc.qhash.items():
+                    for key, value in bc.qhash.iteritems():
                         self._makeSifEntry(value)
                     self._writeToSif('! ToDo: Periodic BCs')
                     self._writeToSif('End')
@@ -363,7 +363,7 @@ class SifWriter():
         for ic in self._ewh.initialConditionEditor:
             self._addSifLine('Initial Condition ', str(ic.ID+1))
             self._addSifLine('  Name = ', '"'+str(ic.nameEdit.text()).strip()+'"')
-            for key, value in ic.qhash.items():
+            for key, value in ic.qhash.iteritems():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')

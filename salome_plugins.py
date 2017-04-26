@@ -70,7 +70,7 @@ def control(context):
     """
     global widget, about, generalSetup, showEquations, showMaterials
     global defineElementProperties, showBodyForces, showBoundaryConditions
-    global showInitialConditions, createMesh, writeSif, startSolver
+    global showInitialConditions, createMesh, writeSif, startSolver, readSif
     global QtCore
 
     # QWidget
@@ -80,6 +80,7 @@ def control(context):
 
     # QPushButtons
     button_about = QtGui.QPushButton('About', widget)
+    button_reader = QtGui.QPushButton('Read sif file', widget)
     button_general = QtGui.QPushButton('General settings', widget)
     button_eq = QtGui.QPushButton('Equations', widget)
     button_mat = QtGui.QPushButton('Materials', widget)
@@ -93,6 +94,7 @@ def control(context):
 
     # QPushButton-Events
     button_about.clicked.connect(lambda: about(context))
+    button_reader.clicked.connect(lambda: readSif(context))
     button_general.clicked.connect(lambda: generalSetup(context))
     button_eq.clicked.connect(lambda: showEquations(context))
     button_mat.clicked.connect(lambda: showMaterials(context))
@@ -106,6 +108,7 @@ def control(context):
 
     layout = QtGui.QVBoxLayout()
     layout.addWidget(button_about)
+    layout.addWidget(button_reader)
     layout.addWidget(button_general)
     layout.addWidget(button_eq)
     layout.addWidget(button_mat)
@@ -430,7 +433,7 @@ def startSolver(context):
                 # create setup file
                 fs = open('ELMERSOLVER_STARTINFO', mode='w')
                 fileName = os.path.basename(sifFile)
-                fs.writelines([fileNamel, '\n', '1'])
+                fs.writelines([fileName, '\n', '1'])
                 fs.close()
                 # call ElmerSolver via mpiexec via a separate thread
                 def solve():
@@ -456,6 +459,7 @@ def startSolver(context):
                 sys.stdout.flush()
                 t = Thread(target=solve)
                 t.start()
+                QtGui.QMessageBox.information(None, 'Solver', 'Solver is running. Check console and log file.')
             # single core operation
             else:
                 from threading import Thread
@@ -485,6 +489,7 @@ def startSolver(context):
                 sys.stdout.flush()
                 t = Thread(target=solve)
                 t.start()
+                QtGui.QMessageBox.information(None, 'Solver', 'Solver is running. Check console and log file.')
 
 
 # %% sif generator
@@ -505,10 +510,31 @@ def writeSif(context):
         return
 
     main.sif_write()
+    
+# %% sif reader
+def readSif(context):
+    """Calls the sif reader.
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
+    global main, QtGui, ewh
+    main = ewh.ElmerWindowHandler()
+    # get active module and check if SMESH
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.information(None, str(active_module),
+                                "Functionality is only provided in mesh module.")
+        return
+
+    main.sif_read()
 
 # %% declare Elmer-Functions to plugin manager
 sp.AddFunction('ELMER/Control window', 'A floating Elmer control', control)
 sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
+sp.AddFunction('ELMER/Read Solver Input File', 'Read sif', readSif)
 sp.AddFunction('ELMER/General settings', 'General simulation settings', generalSetup)
 sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
 sp.AddFunction('ELMER/Materials', 'Materials', showMaterials)
