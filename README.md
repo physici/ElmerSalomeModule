@@ -17,4 +17,5 @@ Plugin for SALOME platform to access Elmer functionality
 * or use  ~/.config/salome/Plugins
   
 ##Usage:
-*  In the 'Mesh'-module of Salome, the plugin is accessable via the 'Tools'-menu.
+* In the 'Mesh'-module of Salome, the plugin is accessable via the 'Tools'-menu.
+* Here is a small demo: https://youtu.be/D2-dp4UxblY
