@@ -202,7 +202,6 @@ class SifReader():
             String containing the settings of the given boundary condition
         """
 
-        pdb.set_trace()
         data = block.split('\n')
 
         # create boundary condition set

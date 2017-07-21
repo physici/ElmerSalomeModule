@@ -34,6 +34,8 @@ import materiallibrary
 import sifwrite
 import sifreader
 
+import pdb
+
 path = os.path.dirname(os.path.abspath(__file__))
 path_forms = path + os.sep + "forms" + os.sep
 path_edfs = path + os.sep + "edf" + os.sep
@@ -871,11 +873,12 @@ class ElmerWindowHandler():
             if not d:
                 return
             self.meshDirectory = os.path.normpath(d)
-        sfw.file = self.meshDirectory + os.sep + 'simulation.sif'
+        simfile = str(self.gsWindow.solverInputFileEdit.text())
+        sfw.file = self.meshDirectory + os.sep + simfile
         # generate sif file
         try:
             sfw.writeSif()
-            self.sifFile = self.meshDirectory + os.sep + 'simulation.sif'
+            self.sifFile = self.meshDirectory + os.sep + simfile
             QtGui.QMessageBox.information(None, 'Success', "Sif-File written.")
         except:
             QtGui.QMessageBox.warning(None, 'Error',
