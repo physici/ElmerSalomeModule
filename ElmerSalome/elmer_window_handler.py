@@ -899,7 +899,11 @@ class ElmerWindowHandler():
             self.meshDirectory = os.path.dirname(file)
             QtGui.QMessageBox.information(None, 'Success', "Sif-File loaded.")
         except:
-            QtGui.QMessageBox.warning(None, 'Error',
+            if sr.errormsg:
+                QtGui.QMessageBox.warning(None, 'Error',
+                                          sr.errormsg)
+            else:
+                QtGui.QMessageBox.warning(None, 'Error',
                                           "An error occured while reading the sif-file.")
 
     def _initGeneralSetup(self):

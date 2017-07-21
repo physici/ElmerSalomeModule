@@ -16,7 +16,7 @@ except ImportError:
     from PyQt5 import QtCore
 import collections
 import re
-
+import pdb
 
 class SifReader():
     """SifReader"""
@@ -33,6 +33,7 @@ class SifReader():
         self._ewh = ewh
         self._solvIds = {}
         self._sifIds = {}
+        self.errormsg = ''
 
     def readSif(self, path):
         """Read a given sif-file and create data and objects in the main class
@@ -53,7 +54,7 @@ class SifReader():
         for line in comments:
             data = data.replace(line, '')
         # and extract the blocks
-        blocks = data.split(sep='End')
+        blocks = data.split('End')
         blocks = [x.strip() for x in blocks]
         blocks.sort()
 
@@ -118,7 +119,7 @@ class SifReader():
         # boundary conditions input has to be split in bcs first
         # extract bc settings and count the number of different settings
         for block in boundaries:
-            lines = block.split('\n')[2:]
+            lines = block.split('\n')[1:]
             line = '\n'.join(lines)
             bc.append(line)
         bc = dict(collections.Counter(bc))
@@ -129,15 +130,16 @@ class SifReader():
             bc.update({key: count})
             count += 1
         # connect boundaries
-        for block in boundaries:
-            lines = block.split('\n')
-            target = lines[1].split('=')[1].strip()
-            key = '\n'.join(lines[2:])
-            idx = bc[key]
-            name = 'BoundaryCondition {}'.format(idx + 1)
-            editor = self._ewh.showBoundaryPropertyDefinition(target, visible=False)
-            editor.boundaryConditionCombo.setCurrentIndex(editor.boundaryConditionCombo.findText(name))
-            self._ewh.elementProperties.update({target[1:-1]: editor})
+        try:
+            for block in boundaries:
+                lines = block.split('\n')
+                target = lines[1].split('=')[1].strip()
+                editor = self._ewh.showBoundaryPropertyDefinition(target, visible=False)
+                editor.boundaryConditionCombo.setCurrentIndex(editor.boundaryConditionCombo.findText(target[1:-1]))
+                self._ewh.elementProperties.update({target[1:-1]: editor})
+        except:
+            self.errormsg = "Possible mismatch in number of boundaries in sif-file and number of boundary faces in study"
+            raise
 
     def _changeSettings(self, parameter, value):
         """Change settings of hashed parameter in element.
@@ -166,12 +168,12 @@ class SifReader():
             parameter.setChecked(value == 'True')
 
     def _bproperties(self, block):
-        """Change settings for a new boundary condition
+        """Change settings for a new body properties
 
         Args:
         -----
         block: str
-            String containing the settings of the given boundary condition
+            String containing the settings of the given body property
         """
 
         data = block.split('\n')
@@ -179,14 +181,16 @@ class SifReader():
 
         # create new window
         editor = self._ewh.showBodyPropertyDefinition(target, visible=False)
-        idx = data[2].split('=')[1].strip()
-        editor.equationCombo.setCurrentIndex(int(idx))
-        idx = data[3].split('=')[1].strip()
-        editor.materialCombo.setCurrentIndex(int(idx))
-        idx = data[4].split('=')[1].strip()
-        editor.bodyForceCombo.setCurrentIndex(int(idx))
-        idx = data[5].split('=')[1].strip()
-        editor.initialConditionCombo.setCurrentIndex(int(idx))
+        for segment in data[1:]:
+            name, idx = segment.split('=')
+            if 'Equation' in name:
+                editor.equationCombo.setCurrentIndex(int(idx.strip()))
+            elif 'Material' in name:
+                editor.materialCombo.setCurrentIndex(int(idx.strip()))
+            elif 'orce' in name:
+                editor.bodyForceCombo.setCurrentIndex(int(idx.strip()))
+            elif 'Initial' in name:
+                editor.initialConditionCombo.setCurrentIndex(int(idx.strip()))
         self._ewh.elementProperties.update({target[1:-1]: editor})
 
     def _bcondition(self, block):
@@ -198,6 +202,7 @@ class SifReader():
             String containing the settings of the given boundary condition
         """
 
+        pdb.set_trace()
         data = block.split('\n')
 
         # create boundary condition set
@@ -209,7 +214,8 @@ class SifReader():
         bc = self._ewh.boundaryConditionEditor[-1]
 
         # set name
-        bc.nameEdit.setText('BoundaryCondition {}'.format(str(count + 1)))
+        name = data.pop(0).split('=')[1].strip()
+        bc.nameEdit.setText(name.replace('"', ''))
 
         # set boundary condition data
         while data:
@@ -227,6 +233,7 @@ class SifReader():
             if freeText:
                 value = bc.qhash['/General/BoundaryCondition/Free text/{}'.format(count)]
                 self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
+        bc.applyButton.click()
 
     def _icondition(self, block):
         """Change settings for a new initial condition
@@ -271,6 +278,7 @@ class SifReader():
                         value = ic.qhash[key]
                         self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
                         break
+        ic.applyButton.click()
 
     def _bforces(self, block):
         """Change settings for a new body force
@@ -315,6 +323,7 @@ class SifReader():
                         value = bf.qhash[key]
                         self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
                         break
+        bf.applyButton.click()
 
     def _materials(self, block):
         """Change settings for a new material
@@ -359,6 +368,7 @@ class SifReader():
                         value = mat.qhash[key]
                         self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
                         break
+        mat.applyButton.click()
 
     def _equation(self, block):
         """Change settings of the equation
@@ -407,6 +417,7 @@ class SifReader():
                         value = eq.qhash[key]
                         self._changeSettings(value.widget, ' = '.join(['  {}'.format(parameter), setting]))
                         break
+        eq.applyButton.click()
 
     def _solvers(self, block):
         """Change settings of the solver.
