@@ -44,7 +44,7 @@ if not (os.path.exists(plugin_path + os.sep + "elmer_window_handler.py")):
 # import window handler
 import elmer_window_handler as ewh
 
-# global variable the will contain the Elmer-class and its memory-location
+# global variable that will contain the Elmer-class and its memory-location
 global main
 
 # the environement variable is required to prevent the re-initialization
@@ -70,7 +70,7 @@ def control(context):
     """
     global widget, about, generalSetup, showEquations, showMaterials
     global defineElementProperties, showBodyForces, showBoundaryConditions
-    global showInitialConditions, createMesh, writeSif, startSolver, readSif
+    global showInitialConditions, createMesh, writeSif, startSolver, readSif, parallelSettings
     global QtCore
 
     # QWidget
@@ -90,6 +90,7 @@ def control(context):
     button_ep = QtGui.QPushButton('Object properties', widget)
     button_mesh = QtGui.QPushButton('Mesh creation', widget)
     button_sif = QtGui.QPushButton('Sif file creation', widget)
+    button_parallel = QtGui.QPushButton('Parallel settings', widget)
     button_solve = QtGui.QPushButton('Start ElmerSolver', widget)
 
     # QPushButton-Events
@@ -104,6 +105,7 @@ def control(context):
     button_ep.clicked.connect(lambda: defineElementProperties(context))
     button_mesh.clicked.connect(lambda: createMesh(context))
     button_sif.clicked.connect(lambda: writeSif(context))
+    button_parallel.clicked.connect(lambda: parallelSettings(context))
     button_solve.clicked.connect(lambda: startSolver(context))
 
     layout = QtGui.QVBoxLayout()
@@ -117,6 +119,7 @@ def control(context):
     layout.addWidget(button_ic)
     layout.addWidget(button_ep)
     layout.addWidget(button_mesh)
+    layout.addWidget(button_parallel)
     layout.addWidget(button_sif)
     layout.addWidget(button_solve)
 
@@ -145,7 +148,7 @@ def about(context):
 
     title = "ELMER interface for SALOME editor"
     msg = "Interface that allows setup of an Elmer simulation with the help of the Salome Mesh editor and generation of necessary sif-file.\n"
-    msg1 = "The mesh has to be exported as *.unv and converted with ELMER GRID. Simulation has to be started separately.\n\n"
+    msg1 = "The mesh is exported as *.unv and converted with ElmerGrid. ElmerSolver can be started in a single process or using multiprocessing.\n\n"
     msg2 = "by raja, mzenker, 2017."
     QtGui.QMessageBox.about(None, title, msg + msg1 + msg2)
     return
@@ -381,10 +384,10 @@ def createMesh(context):
                     return
             else:
                 QtGui.QMessageBox.warning(None, str(active_module),
-                                          "Elmer executable not found. Check system variables.")
+                                          "ElmerGrid executable not found. Check system variables.")
                 return
 
-# %% mesh creation
+# %% call to ElmerSolver
 def startSolver(context):
     """Calls the ElmerSolver. Checks if a sif-file is present and whether
     multiprocessing is available.
@@ -401,96 +404,29 @@ def startSolver(context):
         QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
+    
+    main.start_Solver()
 
-    # get sif-File and mesh-File
-    sifFile = main.sifFile
-    meshDirectory = main.meshDirectory
-    if sifFile == '' or meshDirectory == '':
-        QtGui.QMessageBox.warning(None, str(active_module),
-                                  "Not sif-File or mesh-file present in memory. Write sif or create mesh.")
+
+# %% parallel settings
+def parallelSettings(context):
+    """Shows the parallel settings window
+
+    Args:
+    -----
+    context: salome context
+        Context variable provided by the Salome environment
+    """
+
+    global main, QtGui
+    # get active module and check if SMESH
+    active_module = context.sg.getActiveComponent()
+    if active_module != "SMESH":
+        QtGui.QMessageBox.information(None, str(active_module),
+                                "Functionality is only provided in mesh module.")
         return
-    else:
-        # check if ElmerSolver or mpiexec is known
-        elmslv = spawn.find_executable('ElmerSolver')
-        mpislv = spawn.find_executable('mpiexec')
-        if elmslv == None:
-            QtGui.QMessageBox.warning(None, str(active_module),
-                                      "No ElmerSolver-executalbe found.")
-            return
-        else:
-            # do multiprocessing if available
-            if mpislv != None:
-                import multiprocessing
-                from threading import Thread
-                ncount = multiprocessing.cpu_count()
-                # split mesh
-                # on Linux shell=True required,
-                # see http://stackoverflow.com/a/18962815/4141279
-                subprocess.Popen("ElmerGrid 2 2 {0} -metis {1}".format(meshDirectory, ncount), shell=True)
-                # change dir
-                path = os.path.dirname(sifFile)
-                os.chdir(path)
-                # create setup file
-                fs = open('ELMERSOLVER_STARTINFO', mode='w')
-                fileName = os.path.basename(sifFile)
-                fs.writelines([fileName, '\n', '1'])
-                fs.close()
-                # call ElmerSolver via mpiexec via a separate thread
-                def solve():
-                    logfile = open('simlog.txt', 'w')
-                    proc = subprocess.Popen("mpiexec -n {0} ElmerSolver_mpi".format(ncount),
-                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                            universal_newlines=True, shell=True)
-                    # Poll process for new output until finished
-                    while True:
-                        nextline = proc.stdout.readline()
-                        if nextline == '' and proc.poll() is not None:
-                            break
-                        sys.stdout.write(nextline)
-                        sys.stdout.flush()
-                        logfile.write(nextline)
 
-                    output = proc.communicate()[0]
-                    exitCode = proc.returncode
-                    logfile.close()
-                    print 'Done'
-
-                print 'starting'
-                sys.stdout.flush()
-                t = Thread(target=solve)
-                t.start()
-                QtGui.QMessageBox.information(None, 'Solver', 'Solver is running. Check console and log file.')
-            # single core operation
-            else:
-                from threading import Thread
-                path = os.path.dirname(sifFile)
-                os.chdir(path)
-                # call ElmerSolver via mpiexec via a separate thread
-                def solve():
-                    logfile = open('simlog.txt', 'w')
-                    proc = subprocess.Popen("ElmerSolver {}".format(sifFile),
-                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                            universal_newlines=True, shell=True)
-                    # Poll process for new output until finished
-                    while True:
-                        nextline = proc.stdout.readline()
-                        if nextline == '' and proc.poll() is not None:
-                            break
-                        sys.stdout.write(nextline)
-                        sys.stdout.flush()
-                        logfile.write(nextline)
-
-                    output = proc.communicate()[0]
-                    exitCode = proc.returncode
-                    logfile.close()
-                    print 'Done'
-
-                print 'starting'
-                sys.stdout.flush()
-                t = Thread(target=solve)
-                t.start()
-                QtGui.QMessageBox.information(None, 'Solver', 'Solver is running. Check console and log file.')
-
+    main.showParallelSettings()
 
 # %% sif generator
 def writeSif(context):
@@ -532,16 +468,4 @@ def readSif(context):
     main.sif_read()
 
 # %% declare Elmer-Functions to plugin manager
-sp.AddFunction('ELMER/Control window', 'A floating Elmer control', control)
-sp.AddFunction('ELMER/About', 'About ELMER plugin', about)
-sp.AddFunction('ELMER/Read Solver Input File', 'Read sif', readSif)
-sp.AddFunction('ELMER/General settings', 'General simulation settings', generalSetup)
-sp.AddFunction('ELMER/Equations', 'Equations', showEquations)
-sp.AddFunction('ELMER/Materials', 'Materials', showMaterials)
-sp.AddFunction('ELMER/Body forces', 'Body forces', showBodyForces)
-sp.AddFunction('ELMER/Boundary conditions', 'Boundary conditions', showBoundaryConditions)
-sp.AddFunction('ELMER/Initial conditions', 'Initial conditions', showInitialConditions)
-sp.AddFunction('ELMER/Properties of selected element', 'Properties', defineElementProperties)
-sp.AddFunction('ELMER/Create mesh', 'Mesh creation', createMesh)
-sp.AddFunction('ELMER/Write Solver Input File', 'Write sif', writeSif)
-sp.AddFunction('ELMER/Start Solver', 'Start solver', startSolver)
+sp.AddFunction('Elmer FEM', 'Elmer plugin control window', control)

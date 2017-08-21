@@ -27,7 +27,7 @@ class SifReader():
         Args:
         -----
         ewh: ElmerWindowHandler class
-            current instane of the ElmerWindowHandler class containing all data
+            current instance of the ElmerWindowHandler class containing all data
         """
 
         self._ewh = ewh
@@ -46,9 +46,20 @@ class SifReader():
         """
 
         # read file
-        fs = open(path)
-        data = fs.read()
+        try:
+            fs = open(path)
+        except:
+            self.errormsg = "Error opening file" + path
+            raise
+
+        try:        
+            data = fs.read()
+        except:
+            self.errormsg = "Error reading from file" + path
+            raise
+
         fs.close()
+
         # remove all comments
         comments = re.findall(r'\![ ]*.*\n', data)
         for line in comments:
@@ -57,6 +68,7 @@ class SifReader():
         blocks = data.split('End')
         blocks = [x.strip() for x in blocks]
         blocks.sort()
+        #print('blocks sorted 1')
 
         # collect block types
         bodies = []
@@ -89,6 +101,7 @@ class SifReader():
                 initial.append(block)
             elif block.startswith('Solver'):
                 solvers.append(block)
+        #print('blocks sorted 2')
 
         # apply general settings
         for block in general:
@@ -99,20 +112,32 @@ class SifReader():
         # get all solvers by name and index
         for idx, element in enumerate(self._ewh.solverParameterEditor):
             self._solvIds.update({element.solverName: idx})
+        #print('solvers sorted')
 
         # apply settings
         for block in solvers:
             self._solvers(block)
+        #print('solver settings applied')
+            
         for block in equations:
             self._equation(block)
+        #print('equation settings applied')
+
         for block in materials:
             self._materials(block)
+        #print('material settings applied')
+
         for block in bforces:
             self._bforces(block)
+        #print('bodyforce settings applied')
+
         for block in initial:
             self._icondition(block)
+        #print('initial condition settings applied')
+
         for block in bodies:
             self._bproperties(block)
+        #print('body property settings applied')
 
         bc = []
 
@@ -166,6 +191,7 @@ class SifReader():
             parameter.setCurrentIndex(idx)
         elif isinstance(parameter, QtGui.QCheckBox):
             parameter.setChecked(value == 'True')
+        #print('changeSettings success')
 
     def _bproperties(self, block):
         """Change settings for a new body properties
@@ -202,7 +228,6 @@ class SifReader():
             String containing the settings of the given boundary condition
         """
 
-        pdb.set_trace()
         data = block.split('\n')
 
         # create boundary condition set

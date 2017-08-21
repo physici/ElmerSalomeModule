@@ -73,8 +73,8 @@ class SifWriter():
 
 
     def writeSif(self):
-        print('write_sif')
-        print('----------------------------------------')
+        # print('write_sif')
+        # print('----------------------------------------')
 
         ui = self._ewh.gsWindow
 
@@ -368,7 +368,7 @@ class SifWriter():
             self._writeToSif('End')
             self._writeToSif('')
 
-        print('----------------------------------------')
+        #print('----------------------------------------')
 
         if self._fObject:
             self._fObject.close()
