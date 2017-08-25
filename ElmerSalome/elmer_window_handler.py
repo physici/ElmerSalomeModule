@@ -33,6 +33,10 @@ import boundarypropertyeditor
 import materiallibrary
 import sifwrite
 import sifreader
+import parallelsettings
+import runsolver
+
+import pdb
 
 import pdb
 
@@ -54,6 +58,7 @@ class ElmerWindowHandler():
         self.meshDirectory = ''
         self.sifFile = ''
         self.gsWindow = None
+        self.psWindow = None
         self.equationEditor = []  # stores the equations sets
         self.materialEditor = []  # stores the defined materials
         self.solverParameterEditor = []  # stores the specific solver settings
@@ -82,6 +87,7 @@ class ElmerWindowHandler():
 
         # set the default general settings
         self._initGeneralSetup()
+        pa = self._initParallelSettings()
 
     def about(self):
         """Information window."""
@@ -213,6 +219,17 @@ class ElmerWindowHandler():
         """
         self.gsWindow.show()
         return self.gsWindow
+
+    def showParallelSettings(self):
+        """Show parallel settings window
+
+        Return:
+        -------
+        psWindow: ParallelSettings-class
+            Window for the parallel settings
+        """
+        self.psWindow.show()
+        return self.psWindow
 
     def showSolverParametersEditor(self):
         """Show Solver settings window
@@ -884,6 +901,13 @@ class ElmerWindowHandler():
             QtGui.QMessageBox.warning(None, 'Error',
                                           "An error occured while writing the sif-file.")
 
+    def start_Solver(self):
+        """start ElmerSolver"""
+        # create new instance of runElmerSolver-class
+        rES = runsolver.runElmerSolver(self)
+        rES.start_Solver()
+        # QtGui.QMessageBox.information(None, 'Success', "ElmerSolver has terminated")
+
     def sif_read(self):
         """Sif reader"""
         # create new instance of SifReader-class
@@ -920,6 +944,19 @@ class ElmerWindowHandler():
         ge = generalsetup.GeneralSetup(path_forms)
         self.gsWindow = ge
         return ge
+
+    def _initParallelSettings(self):
+        """Load the default parallel settings.
+
+        Return:
+        -------
+        psWindow: ParallelSettings-class
+            Window for the parallel settings
+        """
+        pa = parallelsettings.ParallelSettings(path_forms)
+        self.psWindow = pa
+        return pa
+
 
     def _boundaryPropertyChanged(self, boundaryPropertyEditor, name):
         """Signal when boundary properties of 'name' have changed.
