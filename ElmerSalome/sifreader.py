@@ -534,7 +534,14 @@ class SifReader():
                 'Adaptive Error Limit': element.adaptiveErrorLimitEdit,
                 'Adaptive Min H': element.adaptiveMinHEdit,
                 'Adaptive Max H': element.adaptiveMaxHEdit,
-                'Adaptive Max Change': element.adaptiveMaxChangeEdit}
+                'Adaptive Max Change': element.adaptiveMaxChangeEdit,
+                'MG Levels' : element.mgLevelsEdit,
+                'MG Mesh name' : element.mgMeshNameEdit,
+                'MG Post smoothing iterations' : element.mgPostSmoothingItersEdit,
+                'MG Pre smoothing iterations' : element.mgPreSmoothingItersEdit,
+                'MG Max Iterations' : element.mgMaxItersEdit,
+                'MG ILUT Tolerance' : element.mgILUTEdit,
+                'MG Equal Split' : element.mgEqualSplitCheck}
 
         while data:
             key, value = data.pop(0).split('=')
@@ -561,7 +568,11 @@ class SifReader():
             if key == 'Adaptive Mesh Refinement':
                 element.adaptiveMeshRefinement.setChecked(True)
                 continue
-            self._changeSettings(keys[key], value)
+            try:
+                self._changeSettings(keys[key], value)
+            except:
+                self.errormsg = "Error while reading {}".foramt(key)
+                raise
 
     def _general(self, block):
         """Change settings in the general setup of the Elmer module

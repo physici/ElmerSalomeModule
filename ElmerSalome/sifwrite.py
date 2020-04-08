@@ -252,12 +252,14 @@ class SifWriter():
                         self._addSifLine('  Linear System Convergence Tolerance = ', str(element.linearSystemConvergenceToleranceEdit.text()).strip())
                         self._addSifLine('  BiCGstabl polynomial degree = ', str(element.linearSystemBiCGstablPolDeg.text()).strip())
                         if not (element.useHypre.isChecked()):
-                            self._addSifLine('  Linear System Preconditioning = ', str(element.linearSystemPreconditioning.currentText()).strip())
+                            precond = str(element.linearSystemPreconditioning.currentText()).strip()
+                            self._addSifLine('  Linear System Preconditioning = ', precond)
                         self._addSifLine('  Linear System ILUT Tolerance = ', str(element.linearSystemILUTToleranceEdit.text()).strip())
                         self._addSifLineBool("  Linear System Abort Not Converged = ", element.linearSystemAbortWhenNotConvergedCheck.isChecked())
                         self._addSifLine('  Linear System Residual Output = ', str(element.linearSystemResidualOutputEdit.text()).strip())
                         self._addSifLine('  Linear System Precondition Recompute = ', str(element.linearSystemPreconditionRecomputeEdit.text()).strip())
                     elif element.linearSystemSolverMultigrid.isChecked():
+                        precond = "Multigrid"
                         self._addSifLine('  Linear System Solver = ', 'Multigrid');
                     self._addSifLine('  ! ToDo: Add missing parameters!!', '')
 
@@ -292,7 +294,17 @@ class SifWriter():
                         self._addSifLine('  Adaptive Max H = ', str(element.adaptiveMaxHEdit.text()).strip())
                         self._addSifLine('  Adaptive Max Change = ', str(element.adaptiveMaxChangeEdit.text()).strip())
 
-#                    self._addSifLine('  ! Multigrid: ', 'TODO')
+                    if precond == "Multigrid":
+                        self._addSifLine('  MG Levels = ', str(element.mgLevelsEdit.text()).strip())
+                        self._addSifLine('  MG Mesh name = ', str(element.mgMeshNameEdit.text()).strip())
+                        print("Check setting for Multigrid Mesh Name")
+                        self._addSifLine('  MG Post smoothing iterations = ', str(element.mgPostSmoothingItersEdit.text()).strip())
+                        self._addSifLine('  MG Pre smoothing iterations = ', str(element.mgPreSmoothingItersEdit.text()).strip())
+                        self._addSifLine('  MG Max Iterations = ', str(element.mgMaxItersEdit.text()))
+                        self._addSifLine('  MG ILUT Tolerance = ', str(element.mgILUTEdit.text()))
+                        self._addSifLine('  MG Equal Split = ', str(element.mgEqualSplitCheck.isChecked()))
+                                        
+                                                
 
                 self._writeToSif('End')
                 self._writeToSif('')
