@@ -2,8 +2,8 @@
 Plugin for SALOME platform to access Elmer functionality 
 
 ##Requirements
-* Elmer 8.2 with ElmerGui installed
-* Salome 7.8 or 8.2
+* Elmer 9.x with ElmerGui installed
+* Salome 9.x
 
 ##Installation with custom plugin-directory
 * create a plugin directory in the root path of SALOME or somewhere convenient, if not already using one
@@ -12,8 +12,8 @@ Plugin for SALOME platform to access Elmer functionality
 * register the directory via the SALOME_PLUGINS_PATH system variable
 
 ##Installation with standard Salome-directories:
-* put everything int (e.g Salome 7.8 on win64):
-\SALOME-7.8.0-WIN64\MODULES\GUI\RELEASE\GUI_INSTALL\share\salome\plugins\gui\
+* put everything int (e.g Salome 9.6 on win64):
+\SALOME-9.6.0\W64\GUI\share\salome\plugins\gui\demo
 * or use  ~/.config/salome/Plugins
   
 ##Usage:
