@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on 
+Created on
 
 @author: Matthias Zenker
 
@@ -197,7 +197,7 @@ class SifWriter():
                     value = element.generalOptions.qhash[key]
                     if (str(element.solverName + '/Solver') in key) and not(any(s in key for s in ['Variable','Procedure'])):
                         self._makeSifEntry(value)
-    
+
                 # General
                 val = ''
                 if element.execAlways.isChecked():
@@ -303,8 +303,8 @@ class SifWriter():
                         self._addSifLine('  MG Max Iterations = ', str(element.mgMaxItersEdit.text()))
                         self._addSifLine('  MG ILUT Tolerance = ', str(element.mgILUTEdit.text()))
                         self._addSifLine('  MG Equal Split = ', str(element.mgEqualSplitCheck.isChecked()))
-                                        
-                                                
+
+
 
                 self._writeToSif('End')
                 self._writeToSif('')
@@ -315,7 +315,7 @@ class SifWriter():
             idx += 1
             self._writeToSif('Equation ' + str(idx))
             self._writeToSif('  Name = "' + str(element.nameEdit.text()).strip() + '"')
-            for key, value in element.qhash.iteritems():
+            for key, value in element.qhash.items():
                 self._makeSifEntry(value)
             activeSolvers = []
             N_activeSolvers = 0
@@ -335,7 +335,7 @@ class SifWriter():
         for mat in self._ewh.materialEditor:
             self._addSifLine('Material ', str(mat.ID+1))
             self._addSifLine('  Name = ', '"'+str(mat.nameEdit.text()).strip()+'"')
-            for key, value in mat.qhash.iteritems():
+            for key, value in mat.qhash.items():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')
@@ -344,7 +344,7 @@ class SifWriter():
         for bf in self._ewh.bodyForceEditor:
             self._addSifLine('Body Force ', str(bf.ID+1))
             self._addSifLine('  Name = ', '"'+str(bf.nameEdit.text()).strip()+'"')
-            for key, value in bf.qhash.iteritems():
+            for key, value in bf.qhash.items():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')
@@ -364,7 +364,7 @@ class SifWriter():
     #                self._writeToSif('  Target Boundaries('+str(len(TargetBoundaries))+') = ' + bcStr )
     #                self._writeToSif('  Name = ' + '"'+str(bc.nameEdit.text()).strip()+'"')
                     self._writeToSif('  Name = ' + '"'+str(name).strip()+'"')
-                    for key, value in bc.qhash.iteritems():
+                    for key, value in bc.qhash.items():
                         self._makeSifEntry(value)
                     self._writeToSif('! ToDo: Periodic BCs')
                     self._writeToSif('End')
@@ -375,7 +375,7 @@ class SifWriter():
         for ic in self._ewh.initialConditionEditor:
             self._addSifLine('Initial Condition ', str(ic.ID+1))
             self._addSifLine('  Name = ', '"'+str(ic.nameEdit.text()).strip()+'"')
-            for key, value in ic.qhash.iteritems():
+            for key, value in ic.qhash.items():
                 self._makeSifEntry(value)
             self._writeToSif('End')
             self._writeToSif('')

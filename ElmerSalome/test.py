@@ -1,7 +1,11 @@
 import sys
-from PyQt4 import QtGui
-from PyQt4 import QtXml
-from PyQt4 import QtCore
+try:
+    from PyQt4 import QtGui
+    from PyQt4 import QtCore
+except ImportError:
+    from PyQt5 import QtWidgets as QtGui
+    from PyQt5 import QtCore
+
 
 sys.dont_write_bytecode = True
 
@@ -9,30 +13,34 @@ import elmer_window_handler
 
 
 sp = None
- 
+
 def equation():
     global sp
-    sp = ewh.showAddEquation()   
+    sp = ewh.showAddEquation()
 
 def material():
     global sp
-    sp = ewh.showAddMaterial()  
-    
+    sp = ewh.showAddMaterial()
+
 def bodyforce():
     global sp
-    sp = ewh.showAddBodyForce()  
+    sp = ewh.showAddBodyForce()
 
 def boundary():
     global sp
-    sp = ewh.showAddBoundaryCondition()    
-    
+    sp = ewh.showAddBoundaryCondition()
+
 def body():
     global sp
-    sp = ewh.showBodyPropertyDefinition("test2")    
+    sp = ewh.showBodyPropertyDefinition("test2")
 
 def initial():
     global sp
-    sp = ewh.showAddInitialCondition()  
+    sp = ewh.showAddInitialCondition()
+
+def writeSif():
+    global sp
+    sp = ewh.sif_write()
 
 if __name__ == "__main__":
     # Create the Qt Application
@@ -41,37 +49,42 @@ if __name__ == "__main__":
     layout = QtGui.QVBoxLayout()
     # Create a button, connect it and show it
     button = QtGui.QPushButton("Equation")
-    ewh = elmer_window_handler.elmerWindowHandler()
+    ewh = elmer_window_handler.ElmerWindowHandler()
     button.clicked.connect(equation)
     layout.addWidget(button)
-    
+
     button1 = QtGui.QPushButton("Material")
-    ewh = elmer_window_handler.elmerWindowHandler()
+    ewh = elmer_window_handler.ElmerWindowHandler()
     button1.clicked.connect(material)
     layout.addWidget(button1)
-    
+
     button2 = QtGui.QPushButton("BodyForce")
-    ewh = elmer_window_handler.elmerWindowHandler()
+    ewh = elmer_window_handler.ElmerWindowHandler()
     button2.clicked.connect(bodyforce)
     layout.addWidget(button2)
-    
+
     button3 = QtGui.QPushButton("Boundary")
-    ewh = elmer_window_handler.elmerWindowHandler()
+    ewh = elmer_window_handler.ElmerWindowHandler()
     button3.clicked.connect(boundary)
     layout.addWidget(button3)
-    
+
     button4 = QtGui.QPushButton("Body")
-    ewh = elmer_window_handler.elmerWindowHandler()
+    ewh = elmer_window_handler.ElmerWindowHandler()
     button4.clicked.connect(body)
     layout.addWidget(button4)
 
     button5 = QtGui.QPushButton("Initial")
-    ewh = elmer_window_handler.elmerWindowHandler()
+    ewh = elmer_window_handler.ElmerWindowHandler()
     button5.clicked.connect(initial)
     layout.addWidget(button5)
 
-    window.setLayout(layout)    
-    window.show()    
-    
+    button6 = QtGui.QPushButton("WriteSif")
+    ewh = elmer_window_handler.ElmerWindowHandler()
+    button6.clicked.connect(writeSif)
+    layout.addWidget(button6)
+
+    window.setLayout(layout)
+    window.show()
+
     # Run the main Qt loop
     app.exec_()

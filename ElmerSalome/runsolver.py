@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on 
+Created on
 
 @author: Matthias Zenker, Rainer Jacob
 
@@ -33,7 +33,7 @@ class runElmerSolver():
         cmd_str = cmd_str.replace('%msh', self._ewh.meshDirectory)
         cmd_str = cmd_str.replace('%ep', str(self._ewh.gsWindow.postFileEdit.text()))
         return cmd_str
-    
+
 
     # %% call to ElmerSolver
     def start_Solver(self):
@@ -42,7 +42,7 @@ class runElmerSolver():
 
         """
         #global subprocess
-        
+
         # get sif-File and mesh-File
         sifFile = self._ewh.sifFile
         meshDirectory = self._ewh.meshDirectory
@@ -55,7 +55,7 @@ class runElmerSolver():
             return 0
         else:
             # check if ElmerSolver is known
-            
+
             if spawn.find_executable('ElmerSolver') == None:
                 QtGui.QMessageBox.warning(None, str("runElmerSolver"),
                                           "No ElmerSolver-executable found.")
@@ -105,10 +105,10 @@ class runElmerSolver():
                             cmd = self.expand(str(self._ewh.psWindow.mergeLineEdit.text()))
                             print(cmd)
                             subprocess.Popen(cmd, shell=True)
-                        print 'Done'
+                        print ('Done')
                         #------------------------------------------------
 
-                    print 'starting'
+                    print ('starting')
                     sys.stdout.flush()
                     t = Thread(target=solve)
                     t.start()
@@ -138,10 +138,10 @@ class runElmerSolver():
                         output = proc.communicate()[0]
                         exitCode = proc.returncode
                         logfile.close()
-                        print 'Done'
+                        print ('Done')
                     #------------------------------------------------
 
-                    print 'starting'
+                    print ('starting')
                     sys.stdout.flush()
                     t = Thread(target=solve)
                     t.start()
@@ -149,4 +149,3 @@ class runElmerSolver():
                     # ...
                     #QtGui.QMessageBox.information(None, 'Solver', 'Solver has terminated.')
                     return 1
-

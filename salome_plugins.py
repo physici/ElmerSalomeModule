@@ -18,12 +18,15 @@ except ImportError:
 from distutils import spawn
 
 import salome_pluginsmanager as sp
-import smesh
+import SMESH as smesh
 import salome
 import sys
 import os
 import subprocess
 import pdb
+
+from salome.smesh import smeshstudytools
+from salome.gui import helper
 
 # %% setup
 plugin_path = ""
@@ -57,6 +60,8 @@ if os.getenv("already_initialized", "0") != "1":
 os.environ["already_initialized"] = "1"
 
 widget = None
+
+tool = smeshstudytools.SMeshStudyTools()
 
 # %% Elmer control window
 def control(context):
@@ -326,7 +331,7 @@ def createMesh(context):
     context: salome context
         Context variable provided by the Salome environment
     """
-    global main, sp, smesh, salome, subprocess, QtGui, pdb, spawn
+    global main, sp, smesh, salome, subprocess, QtGui, pdb, spawn, tool
     # get active module and check if SMESH
     active_module = context.sg.getActiveComponent()
     if active_module != "SMESH":
@@ -342,14 +347,13 @@ def createMesh(context):
         return
     # check if selection == mesh
     else:
-        objID = sp.sg.getSelected(0)
-        ref = salome.IDToObject(objID)
         try:
-            myMesh = smesh.Mesh(ref)
+            myMesh = tool.getMeshObjectSelected()
         except AttributeError:
             QtGui.QMessageBox.warning(None, str(active_module),
                                       "Selection is not a mesh.")
             return
+
         # get a filename for saving the unv-mesh
         title = 'Export mesh to file'
         fname = QtGui.QFileDialog.getSaveFileName(parent=None, caption=title,
@@ -379,8 +383,8 @@ def createMesh(context):
                     main.meshDirectory = path
                 except OSError:
                     QtGui.QMessageBox.about(None, "File IO error", "fname: {}, path: {}".format(fname, path))
-                    print fname
-                    print path
+                    print (fname)
+                    print (path)
                     return
             else:
                 QtGui.QMessageBox.warning(None, str(active_module),
@@ -404,7 +408,7 @@ def startSolver(context):
         QtGui.QMessageBox.information(None, str(active_module),
                                 "Functionality is only provided in mesh module.")
         return
-    
+
     main.start_Solver()
 
 
@@ -446,7 +450,7 @@ def writeSif(context):
         return
 
     main.sif_write()
-    
+
 # %% sif reader
 def readSif(context):
     """Calls the sif reader.
