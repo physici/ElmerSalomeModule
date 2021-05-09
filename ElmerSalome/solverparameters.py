@@ -27,7 +27,7 @@ class SolverParameterEditor(QtGui.QDialog):
             window.
         """
         super(SolverParameterEditor, self).__init__()
-        uic.loadUi(path_forms + "solverparameters.ui", self)
+        uic.loadUi(path_forms.joinpath("solverparameters.ui"), self)
 
         self.applyButton.clicked.connect(self.close)
 

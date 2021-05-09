@@ -19,9 +19,11 @@ except ImportError:
 
 import os
 import os.path
+from pathlib import Path
 import sys
 import glob
 import tempfile
+import shutil
 
 from xml.etree import ElementTree as et
 
@@ -36,14 +38,6 @@ import sifreader
 import parallelsettings
 import runsolver
 
-import pdb
-
-import pdb
-
-path = os.path.dirname(os.path.abspath(__file__))
-path_forms = path + os.sep + "forms" + os.sep
-path_edfs = path + os.sep + "edf" + os.sep
-
 main = None
 
 
@@ -54,6 +48,15 @@ class ElmerWindowHandler():
 
     def __init__(self):
         """Constructor"""
+        path = shutil.which('ElmerSolver')
+        path = path[:-19]
+        path += r"share/ElmerGUI/edf/"
+        self._path_edfs = Path(path)
+
+        path = os.path.dirname(os.path.abspath(__file__))
+        path += r"/forms"
+        self._path_forms = Path(path)
+
         # public fields
         self.meshDirectory = ''
         self.sifFile = ''
@@ -67,7 +70,7 @@ class ElmerWindowHandler():
         self.boundaryConditionEditor = []  # stores the boundary conditions
         self.elementProperties = {}  # stores the properties of bodies/faces by name
         # private fields
-        self._materialLibrary = materiallibrary.MaterialLibrary(path_forms, path_edfs)
+        self._materialLibrary = materiallibrary.MaterialLibrary(self._path_forms, self._path_edfs)
         # storage variables to to keep track of windows
         self._elmerDefs = None
         self._listview = None
@@ -82,7 +85,7 @@ class ElmerWindowHandler():
         self._bfCurrent = 0
         self._bcCurrent = 0
         self._icCurrent = 0
-        self._xmlMerge(path_edfs)
+        self._xmlMerge(self._path_edfs)
         self._parent = self
 
         # set the default general settings
@@ -111,7 +114,7 @@ class ElmerWindowHandler():
             BoundaryProperty-Window with the new data
         """
         # create new instance of BoundaryPropertyEditor-class
-        be = boundarypropertyeditor.BoundaryPropertyEditor(path_forms)
+        be = boundarypropertyeditor.BoundaryPropertyEditor(self._path_forms)
         be.objName = objName
         be.setWindowTitle("Boundary property for boundary {}".format(objName))
 
@@ -155,7 +158,7 @@ class ElmerWindowHandler():
             BodyProperty-Window with the new data
         """
         # create new instance of BodyPropertyEditor-class
-        be = bodypropertyeditor.BodyPropertyEditor(path_forms)
+        be = bodypropertyeditor.BodyPropertyEditor(self._path_forms)
         be.nameEdit.setText(objName)
         be.setWindowTitle("Body property for body {}".format(objName))
 
@@ -239,7 +242,7 @@ class ElmerWindowHandler():
         sp: SolverParameterEditor-class
             Window for the general settings
         """
-        sp = solverparameters.SolverParameterEditor(path_forms)
+        sp = solverparameters.SolverParameterEditor(self._path_forms)
         return sp
 
     def showAddEquation(self, visible=True):
@@ -897,9 +900,9 @@ class ElmerWindowHandler():
             sfw.writeSif()
             self.sifFile = self.meshDirectory + os.sep + simfile
             QtGui.QMessageBox.information(None, 'Success', "Sif-File written.")
-        except:
+        except Exception as e:
             QtGui.QMessageBox.warning(None, 'Error',
-                                          "An error occured while writing the sif-file.")
+                                          "An error occured while writing the sif-file. {}".format(e))
 
     def start_Solver(self):
         """start ElmerSolver"""
@@ -925,13 +928,13 @@ class ElmerWindowHandler():
             self.sifFile = file
             self.meshDirectory = os.path.dirname(file)
             QtGui.QMessageBox.information(None, 'Success', "Sif-File loaded.")
-        except:
+        except Exception as e:
             if sr.errormsg:
                 QtGui.QMessageBox.warning(None, 'Error',
                                           sr.errormsg)
             else:
                 QtGui.QMessageBox.warning(None, 'Error',
-                                          "An error occured while reading the sif-file.")
+                                          "An error occured while reading the sif-file: {}".format(e))
 
     def _initGeneralSetup(self):
         """Load the default general settings.
@@ -941,7 +944,7 @@ class ElmerWindowHandler():
         gsWindow: GeneralSetup-class
             Window for the general settings
         """
-        ge = generalsetup.GeneralSetup(path_forms)
+        ge = generalsetup.GeneralSetup(self._path_forms)
         self.gsWindow = ge
         return ge
 
@@ -953,7 +956,7 @@ class ElmerWindowHandler():
         psWindow: ParallelSettings-class
             Window for the parallel settings
         """
-        pa = parallelsettings.ParallelSettings(path_forms)
+        pa = parallelsettings.ParallelSettings(self._path_forms)
         self.psWindow = pa
         return pa
 
@@ -1122,7 +1125,7 @@ class ElmerWindowHandler():
             self.solverParameterEditor = tmp
         # create a new instane of the Solver settings and put it into storage
         if not self.solverParameterEditor[current]:
-            self.solverParameterEditor[current] = solverparameters.SolverParameterEditor(path_forms)
+            self.solverParameterEditor[current] = solverparameters.SolverParameterEditor(self._path_forms)
 
         spe = self.solverParameterEditor[current]
         spe.setWindowTitle("Solver control for {}".format(title))
@@ -1149,20 +1152,20 @@ class ElmerWindowHandler():
 
         Args:
         -----
-        path: str
+        path: pathlib PurePath-object
             path to the Elmer xml-files configuration files
 
         """
         # create a temporary file
         mybuf = tempfile.TemporaryFile()
 
-        gen_file = path + "edf.xml"
+        gen_file = path.joinpath("edf.xml")
 
         # general settings
         first = et.parse(gen_file).getroot()
 
         # solver settings
-        xml_files = glob.glob(path + "*.xml")
+        xml_files = glob.glob(str(path.joinpath("*.xml")))
         xml_files = [file for file in xml_files if not os.path.basename(file).startswith("edf")]
         xml_files = [file for file in xml_files if not os.path.basename(file).startswith("eg")]
 

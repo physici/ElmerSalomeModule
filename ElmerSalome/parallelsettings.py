@@ -30,7 +30,7 @@ class ParallelSettings(QtGui.QDialog):
             window.
         """
         super(ParallelSettings, self).__init__()
-        uic.loadUi(path_forms + "parallel.ui", self)
+        uic.loadUi(path_forms.joinpath("parallel.ui") , self)
         self.setDefaults()
         self.parallelActiveCheckBox.setChecked(False)
         self.parallelOnOff()
@@ -76,9 +76,8 @@ class ParallelSettings(QtGui.QDialog):
         # Check if MPI executable exists
         if self.parallelActiveCheckBox.isChecked() and (spawn.find_executable(str(self.parallelExecLineEdit.text())) == None):
             QtGui.QMessageBox.warning(None, 'Error', "MPI executable not found.")
-            self.parallelActiveCheckBox.setChecked(False)            
+            self.parallelActiveCheckBox.setChecked(False)
             self.parallelOnOff()
         else:
             # Hide window, but keep contents in memory
             self.hide()
-        

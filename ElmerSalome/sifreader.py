@@ -16,7 +16,6 @@ except ImportError:
     from PyQt5 import QtCore
 import collections
 import re
-import pdb
 
 class SifReader():
     """SifReader"""
@@ -52,7 +51,7 @@ class SifReader():
             self.errormsg = "Error opening file" + path
             raise
 
-        try:        
+        try:
             data = fs.read()
         except:
             self.errormsg = "Error reading from file" + path
@@ -103,6 +102,7 @@ class SifReader():
                 solvers.append(block)
         #print('blocks sorted 2')
 
+
         # apply general settings
         for block in general:
             self._general(block)
@@ -114,11 +114,12 @@ class SifReader():
             self._solvIds.update({element.solverName: idx})
         #print('solvers sorted')
 
+
         # apply settings
         for block in solvers:
             self._solvers(block)
         #print('solver settings applied')
-            
+
         for block in equations:
             self._equation(block)
         #print('equation settings applied')
@@ -486,7 +487,7 @@ class SifReader():
                 if value == 'Never':
                     element.execNever.setChecked(True)
                 break
-            key = '/{}/Solver/{}'.format(name, key)
+            key = '/{}/Solver/{}/{}'.format(name, key, idx)
             parameter = element.generalOptions.qhash[key]
             self._changeSettings(parameter.widget, value)
 

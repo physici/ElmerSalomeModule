@@ -27,7 +27,7 @@ class GeneralSetup(QtGui.QDialog):
             window.
         """
         super(GeneralSetup, self).__init__()
-        uic.loadUi(path_forms + "generalsetup.ui", self)
+        uic.loadUi(path_forms.joinpath("generalsetup.ui"), self)
         self.simulationFreeTextEdit.setText("Use Mesh Names = Logical True")
         self.acceptButton.clicked.connect(self.applyChanges)
 

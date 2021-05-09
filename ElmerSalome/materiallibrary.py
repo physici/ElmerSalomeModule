@@ -40,7 +40,7 @@ class MaterialLibrary(QtGui.QDialog):
         # privat
         self._materialDoc = QtXml.QDomDocument()
 
-        uic.loadUi(path_forms + "materiallibrary.ui", self)
+        uic.loadUi(path_forms.joinpath("materiallibrary.ui"), self)
 
         # connect buttons
         self.okButton.clicked.connect(self._okButtonClicked)
@@ -49,7 +49,7 @@ class MaterialLibrary(QtGui.QDialog):
         self.closeButton.clicked.connect(self._closeButtonClicked)
 
         # load material library
-        matFileName = path_edfs + "egmaterials.xml"
+        matFileName = str(path_edfs.joinpath("egmaterials.xml"))
         matlist = self.materialListWidget
         matlist.clear()
 

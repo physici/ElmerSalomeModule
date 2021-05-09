@@ -42,6 +42,11 @@ def writeSif():
     global sp
     sp = ewh.sif_write()
 
+def readSif():
+    global sp
+    sp = ewh.sif_read()
+
+
 if __name__ == "__main__":
     # Create the Qt Application
     app = QtGui.QApplication(sys.argv)
@@ -82,6 +87,11 @@ if __name__ == "__main__":
     ewh = elmer_window_handler.ElmerWindowHandler()
     button6.clicked.connect(writeSif)
     layout.addWidget(button6)
+
+    button7 = QtGui.QPushButton("ReadSif")
+    ewh = elmer_window_handler.ElmerWindowHandler()
+    button7.clicked.connect(readSif)
+    layout.addWidget(button7)
 
     window.setLayout(layout)
     window.show()

@@ -34,7 +34,7 @@ class BodyPropertyEditor(QtGui.QDialog):
         """
         super(BodyPropertyEditor, self).__init__()
 
-        uic.loadUi(path_forms + "bodypropertyeditor.ui", self)
+        uic.loadUi(path_forms.joinpath("bodypropertyeditor.ui"), self)
 
         # public
         self.material = None
