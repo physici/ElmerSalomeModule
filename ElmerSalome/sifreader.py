@@ -203,6 +203,8 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
         target = data[1].split('=')[1].strip()
 
         # create new window
@@ -229,6 +231,8 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
 
         # create boundary condition set
         count = len(self._ewh.boundaryConditionEditor)
@@ -270,6 +274,8 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
 
         # get initial condition set
         sifID = int(data.pop(0).split(' ')[2])
@@ -315,6 +321,9 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
+
 
         # get body force set
         sifID = int(data.pop(0).split(' ')[2])
@@ -360,6 +369,9 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
+
 
         # get equation set
         sifID = int(data.pop(0).split(' ')[1])
@@ -405,6 +417,9 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
+
 
         # get equation set
         sifID = int(data.pop(0).split(' ')[1])
@@ -454,6 +469,8 @@ class SifReader():
         """
 
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
 
         # mapping of solver name and ID as in sif-file
         sifID = data.pop(0).split(' ')[1]
@@ -466,12 +483,7 @@ class SifReader():
 
         # general options
         while data:
-            try:
-                key, value = data.pop(0).split('=')
-            except ValueError:
-                continue
-            if (key is None) or (value is None):
-                continue
+            key, value = data.pop(0).split('=')
             key = key.strip()
             value = value.strip()
             if 'Exec' in key:
@@ -590,6 +602,8 @@ class SifReader():
 
         # split rows
         data = block.split('\n')
+        data = [x for x in data if x != "  "]
+        data = [x for x in data if x != ""]
 
         title = data.pop(0)
 
