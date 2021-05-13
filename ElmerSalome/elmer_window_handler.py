@@ -48,6 +48,14 @@ class ElmerWindowHandler():
 
     def __init__(self):
         """Constructor"""
+        # check python version
+        if sys.version_info.major < 3:
+            print("Requires Python > 3.3")
+            sys.exit(1)
+        if sys.version_info.minor < 3:
+            print("Requires Python > 3.3")
+            sys.exit(1)
+
         path = shutil.which('ElmerSolver')
         path = path[:-19]
         path += r"share/ElmerGUI/edf/"

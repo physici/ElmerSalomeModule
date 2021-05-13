@@ -114,7 +114,6 @@ class SifReader():
             self._solvIds.update({element.solverName: idx})
         #print('solvers sorted')
 
-
         # apply settings
         for block in solvers:
             self._solvers(block)
@@ -465,12 +464,14 @@ class SifReader():
         idx = self._solvIds[name]
         element = self._ewh.solverParameterEditor[idx]
 
-        procedure = data.pop(0).split('=')[1].strip()
-        variable = data.pop(0).split('=')[1].strip()
-
         # general options
         while data:
-            key, value = data.pop(0).split('=')
+            try:
+                key, value = data.pop(0).split('=')
+            except ValueError:
+                continue
+            if (key is None) or (value is None):
+                continue
             key = key.strip()
             value = value.strip()
             if 'Exec' in key:

@@ -15,7 +15,7 @@ except ImportError:
     from PyQt5 import QtXml
     from PyQt5 import QtCore
 
-from distutils import spawn
+import shutil
 import subprocess
 import os
 import sys
@@ -56,7 +56,7 @@ class runElmerSolver():
         else:
             # check if ElmerSolver is known
 
-            if spawn.find_executable('ElmerSolver') == None:
+            if shutil.which('ElmerSolver') == None:
                 QtGui.QMessageBox.warning(None, str("runElmerSolver"),
                                           "No ElmerSolver-executable found.")
                 return 0

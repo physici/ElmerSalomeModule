@@ -13,7 +13,7 @@ try:
 except ImportError:
     from PyQt5 import QtWidgets as QtGui
     from PyQt5 import uic
-from distutils import spawn
+import shutil
 import multiprocessing
 
 
@@ -74,7 +74,7 @@ class ParallelSettings(QtGui.QDialog):
     def applyChanges(self):
         """Accept button hit"""
         # Check if MPI executable exists
-        if self.parallelActiveCheckBox.isChecked() and (spawn.find_executable(str(self.parallelExecLineEdit.text())) == None):
+        if self.parallelActiveCheckBox.isChecked() and (shutil.which(str(self.parallelExecLineEdit.text())) == None):
             QtGui.QMessageBox.warning(None, 'Error', "MPI executable not found.")
             self.parallelActiveCheckBox.setChecked(False)
             self.parallelOnOff()
