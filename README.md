@@ -3,6 +3,7 @@ Plugin for SALOME platform to access Elmer functionality
 
 ## Requirements
 * Elmer 9.x with ElmerGui installed
+* path to \bin-directory in Elmer-root directory set in PATH-Variable
 * Salome 9.x
 
 ## Installation with custom plugin-directory
